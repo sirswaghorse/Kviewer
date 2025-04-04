@@ -3,281 +3,230 @@ Packet handler for processing OpenSimulator protocol packets.
 """
 
 import logging
-import time
-import threading
-import queue
+from app.network.opensim_protocol import MessageType
 
 class PacketHandler:
     """Handler for processing OpenSimulator packets"""
     
     def __init__(self, connection):
         """Initialize the packet handler"""
-        self.logger = logging.getLogger("kitelyview.network.packet_handler")
-        self.logger.info("Initializing packet handler")
-        
-        # Store reference to the connection
+        self.logger = logging.getLogger("kitelyview")
         self.connection = connection
-        
-        # Set up packet handlers
+        self.handlers = {}
         self._init_packet_handlers()
-        
-        self.logger.info("Packet handler initialized")
         
     def _init_packet_handlers(self):
         """Initialize packet handler functions"""
         # Map message types to handler functions
-        from app.network.opensim_protocol import MessageType
-        
-        self.handlers = {
-            MessageType.ChatFromSimulator: self._handle_chat_from_simulator,
-            MessageType.ImprovedInstantMessage: self._handle_instant_message,
-            MessageType.ImprovedTerseObjectUpdate: self._handle_object_update,
-            MessageType.AvatarAnimation: self._handle_avatar_animation,
-            MessageType.LayerData: self._handle_layer_data,
-            MessageType.RegionHandshake: self._handle_region_handshake,
-            MessageType.SimStats: self._handle_sim_stats,
-            MessageType.AgentMovementComplete: self._handle_agent_movement_complete,
-            MessageType.InventoryFolder: self._handle_inventory_folder,
-            MessageType.InventoryItem: self._handle_inventory_item,
-            MessageType.ImageData: self._handle_image_data
-        }
+        self.handlers[MessageType.ChatFromSimulator] = self._handle_chat_from_simulator
+        self.handlers[MessageType.ImprovedInstantMessage] = self._handle_instant_message
+        self.handlers[MessageType.ObjectUpdate] = self._handle_object_update
+        self.handlers[MessageType.AvatarAnimation] = self._handle_avatar_animation
+        self.handlers[MessageType.LayerData] = self._handle_layer_data
+        self.handlers[MessageType.RegionHandshake] = self._handle_region_handshake
+        self.handlers[MessageType.SimStats] = self._handle_sim_stats
+        self.handlers[MessageType.AgentMovementComplete] = self._handle_agent_movement_complete
+        self.handlers[MessageType.InventoryFolder] = self._handle_inventory_folder
+        self.handlers[MessageType.InventoryItem] = self._handle_inventory_item
+        self.handlers[MessageType.ImageData] = self._handle_image_data
+        # More handlers would be added here...
         
     def handle_packet(self, packet):
         """Process a packet"""
-        try:
-            # Parse the packet
-            message_type, data = self.connection.protocol.parse_packet(packet)
-            
-            if message_type is None:
-                self.logger.warning("Failed to parse packet")
-                return
-                
-            # Find and call the appropriate handler
-            handler = self.handlers.get(message_type)
-            if handler:
-                handler(data)
-            else:
-                self.logger.debug(f"No handler for message type: {message_type}")
-                
-        except Exception as e:
-            self.logger.error(f"Error handling packet: {e}", exc_info=True)
-            
+        message_type, data = self.connection.protocol.parse_packet(packet)
+        
+        if message_type and message_type in self.handlers:
+            try:
+                self.handlers[message_type](data)
+            except Exception as e:
+                self.logger.error(f"Error processing {message_type} packet: {e}")
+        elif message_type:
+            self.logger.debug(f"No handler for message type: {message_type}")
+        else:
+            self.logger.warning("Failed to parse packet")
+    
     def _handle_chat_from_simulator(self, data):
         """Handle chat message from simulator"""
-        self.logger.debug(f"Chat from simulator: {data}")
+        # In a real implementation, this would parse the chat data
+        # and trigger callbacks for UI display
+        self.logger.debug(f"Received chat message: {data}")
         
-        # Extract chat data
-        from_name = data.get("FromName", "Unknown")
-        message = data.get("Message", "")
-        chat_type = data.get("ChatType", 1)  # 1 = Normal
-        source_type = data.get("SourceType", 1)  # 1 = Agent
-        
-        # Trigger chat message callback
-        self.connection._trigger_callback(
-            "chat_message",
-            from_name,
-            message,
-            chat_type,
-            source_type
-        )
-        
+        # Extract basic info from data (in real implementation, proper deserialize)
+        # This is simplified for the demo
+        if isinstance(data, str):
+            # For demo, assume data is our simplified string format
+            try:
+                # Trigger callbacks
+                for callback in self.connection.callbacks["chat_message"]:
+                    callback({
+                        "from": "System",
+                        "message": data,
+                        "type": "normal"
+                    })
+            except Exception as e:
+                self.logger.error(f"Error in chat message callback: {e}")
+    
     def _handle_instant_message(self, data):
         """Handle instant message"""
-        self.logger.debug(f"Instant message: {data}")
+        self.logger.debug(f"Received instant message: {data}")
         
-        # Extract IM data
-        from_name = data.get("FromAgentName", "Unknown")
-        message = data.get("Message", "")
-        im_session_id = data.get("IMSessionID", "")
-        
-        # Trigger IM message callback
-        self.connection._trigger_callback(
-            "im_message",
-            from_name,
-            message,
-            im_session_id
-        )
-        
+        # Extract info and trigger callbacks
+        # Similar to chat handling, but for IMs
+        try:
+            # For demo, assume data is our simplified string format
+            for callback in self.connection.callbacks["instant_message"]:
+                callback({
+                    "from": "User",
+                    "message": data,
+                    "dialog_type": 0
+                })
+        except Exception as e:
+            self.logger.error(f"Error in instant message callback: {e}")
+    
     def _handle_object_update(self, data):
         """Handle object update"""
-        self.logger.debug(f"Object update: {data}")
+        self.logger.debug(f"Received object update: {data}")
         
-        # Extract object data
-        region_data = data.get("RegionData", {})
-        object_data = data.get("ObjectData", {})
+        # In a real implementation, this would:
+        # - Parse object properties
+        # - Create or update object in scene
+        # - Handle attachments, object editing, etc.
         
-        # Trigger object update callback
-        self.connection._trigger_callback(
-            "object_update",
-            region_data,
-            object_data
-        )
-        
+        # Trigger callbacks
+        for callback in self.connection.callbacks["object_update"]:
+            try:
+                callback({
+                    "local_id": 12345,
+                    "position": [128, 128, 30],
+                    "rotation": [0, 0, 0, 1],
+                    "name": "Object"
+                })
+            except Exception as e:
+                self.logger.error(f"Error in object update callback: {e}")
+    
     def _handle_avatar_animation(self, data):
         """Handle avatar animation"""
-        self.logger.debug(f"Avatar animation: {data}")
+        self.logger.debug(f"Received avatar animation: {data}")
         
-        # Extract animation data
-        sender = data.get("Sender", "")
-        anim_ids = data.get("AnimID", [])
-        anim_sequence_ids = data.get("AnimSequenceID", [])
+        # In a real implementation:
+        # - Parse animation data
+        # - Update avatar animation state
+        # - Start/stop animations
         
-        # Trigger avatar update callback
-        self.connection._trigger_callback(
-            "avatar_update",
-            sender,
-            anim_ids,
-            anim_sequence_ids
-        )
-        
+        # Trigger callbacks
+        for callback in self.connection.callbacks["avatar_update"]:
+            try:
+                callback({
+                    "avatar_id": "00000000-0000-0000-0000-000000000000",
+                    "animation": "walk"
+                })
+            except Exception as e:
+                self.logger.error(f"Error in avatar update callback: {e}")
+    
     def _handle_layer_data(self, data):
         """Handle layer data (terrain, etc)"""
-        self.logger.debug(f"Layer data: {data}")
+        self.logger.debug(f"Received layer data")
         
-        # Extract layer data
-        layer_type = data.get("LayerType", 0)
-        layer_id = data.get("LayerID", 0)
-        layer_data = data.get("Data", bytes())
-        
-        # Process different layer types
-        if layer_type == 0:  # Land
-            # Trigger terrain update callback
-            self.connection._trigger_callback(
-                "terrain_update",
-                layer_id,
-                layer_data
-            )
-        elif layer_type == 1:  # Wind
-            # Trigger wind update callback
-            self.connection._trigger_callback(
-                "wind_update",
-                layer_id,
-                layer_data
-            )
-        elif layer_type == 2:  # Cloud
-            # Trigger cloud update callback
-            self.connection._trigger_callback(
-                "cloud_update",
-                layer_id,
-                layer_data
-            )
-            
+        # In a real implementation:
+        # - Parse layer type (terrain, wind, cloud)
+        # - Update appropriate data structures
+        # - For terrain, update heightmap
+    
     def _handle_region_handshake(self, data):
         """Handle region handshake"""
-        self.logger.debug(f"Region handshake: {data}")
+        self.logger.debug(f"Received region handshake: {data}")
         
-        # Extract region data
-        region_flags = data.get("RegionFlags", 0)
-        sim_access = data.get("SimAccess", 0)
-        region_name = data.get("SimName", "Unknown")
-        region_owner = data.get("SimOwner", "")
-        terrain_base0 = data.get("TerrainBase0", 0.0)
-        terrain_base1 = data.get("TerrainBase1", 0.0)
-        terrain_base2 = data.get("TerrainBase2", 0.0)
-        terrain_base3 = data.get("TerrainBase3", 0.0)
+        # In a real implementation:
+        # - Parse region details (name, size, etc)
+        # - Set up region terrain parameters
+        # - Send RegionHandshakeReply
         
-        # Store region info
-        self.connection.current_region = region_name
+        # Update region information
+        self.connection.current_region["name"] = "Kitely Plaza"
         
-        # Trigger region handshake callback
-        self.connection._trigger_callback(
-            "region_handshake",
-            region_name,
-            region_flags,
-            sim_access,
-            region_owner
-        )
-        
-        # Send RegionHandshakeReply
-        # In a real viewer, you would send a proper UDP packet
-        
+        # Trigger callbacks
+        for callback in self.connection.callbacks["region_change"]:
+            try:
+                callback(self.connection.current_region)
+            except Exception as e:
+                self.logger.error(f"Error in region change callback: {e}")
+    
     def _handle_sim_stats(self, data):
         """Handle simulator statistics"""
-        self.logger.debug(f"Simulator stats: {data}")
+        self.logger.debug(f"Received simulator stats")
         
-        # Extract stats data
-        stats = data.get("Statistics", {})
-        
-        # Trigger simulator stats callback
-        self.connection._trigger_callback(
-            "simulator_stats",
-            stats
-        )
-        
+        # In a real implementation:
+        # - Parse statistics data
+        # - Update UI statistics display
+        # - Monitor for performance issues
+    
     def _handle_agent_movement_complete(self, data):
         """Handle agent movement completion"""
-        self.logger.debug(f"Agent movement complete: {data}")
+        self.logger.debug(f"Received agent movement complete: {data}")
         
-        # Extract position data
-        position = data.get("Position", [0, 0, 0])
-        look_at = data.get("LookAt", [0, 0, 0])
+        # In a real implementation:
+        # - Update agent position
+        # - Handle teleport completion
+        # - Update camera position
         
-        # Trigger movement complete callback
-        self.connection._trigger_callback(
-            "movement_complete",
-            position,
-            look_at
-        )
-        
+        # Trigger teleport callbacks if applicable
+        for callback in self.connection.callbacks["teleport"]:
+            try:
+                callback(
+                    self.connection.current_region["name"],
+                    self.connection.current_region["position"][0],
+                    self.connection.current_region["position"][1],
+                    self.connection.current_region["position"][2]
+                )
+            except Exception as e:
+                self.logger.error(f"Error in teleport callback: {e}")
+    
     def _handle_inventory_folder(self, data):
         """Handle inventory folder update"""
-        self.logger.debug(f"Inventory folder: {data}")
+        self.logger.debug(f"Received inventory folder: {data}")
         
-        # Extract folder data
-        folder_id = data.get("FolderID", "")
-        parent_id = data.get("ParentID", "")
-        folder_name = data.get("Name", "")
+        # In a real implementation:
+        # - Parse folder data
+        # - Update inventory tree
+        # - Handle special folders (Trash, Recent, etc)
         
-        # Trigger inventory update callback
-        self.connection._trigger_callback(
-            "inventory_update",
-            "folder",
-            folder_id,
-            parent_id,
-            folder_name
-        )
-        
+        # Trigger callbacks
+        for callback in self.connection.callbacks["inventory_update"]:
+            try:
+                callback({
+                    "type": "folder",
+                    "folder_id": "00000000-0000-0000-0000-000000000000",
+                    "name": "New Folder"
+                })
+            except Exception as e:
+                self.logger.error(f"Error in inventory update callback: {e}")
+    
     def _handle_inventory_item(self, data):
         """Handle inventory item update"""
-        self.logger.debug(f"Inventory item: {data}")
+        self.logger.debug(f"Received inventory item: {data}")
         
-        # Extract item data
-        item_id = data.get("ItemID", "")
-        folder_id = data.get("FolderID", "")
-        creator_id = data.get("CreatorID", "")
-        asset_id = data.get("AssetID", "")
-        item_name = data.get("Name", "")
-        description = data.get("Description", "")
+        # In a real implementation:
+        # - Parse item data
+        # - Add to appropriate folder
+        # - Handle permissions
         
-        # Trigger inventory update callback
-        self.connection._trigger_callback(
-            "inventory_update",
-            "item",
-            item_id,
-            folder_id,
-            creator_id,
-            asset_id,
-            item_name,
-            description
-        )
-        
+        # Trigger callbacks
+        for callback in self.connection.callbacks["inventory_update"]:
+            try:
+                callback({
+                    "type": "item",
+                    "item_id": "00000000-0000-0000-0000-000000000000",
+                    "name": "New Item",
+                    "item_type": "object"
+                })
+            except Exception as e:
+                self.logger.error(f"Error in inventory update callback: {e}")
+    
     def _handle_image_data(self, data):
         """Handle image data (textures)"""
-        self.logger.debug(f"Image data: {data}")
+        self.logger.debug(f"Received image data")
         
-        # Extract image data
-        image_id = data.get("ImageID", "")
-        image_data = data.get("Data", bytes())
-        image_size = data.get("Size", 0)
-        image_packet = data.get("Packet", 0)
-        image_packets = data.get("Packets", 0)
-        
-        # Trigger texture update callback
-        self.connection._trigger_callback(
-            "texture_update",
-            image_id,
-            image_data,
-            image_size,
-            image_packet,
-            image_packets
-        )
+        # In a real implementation:
+        # - Parse image data
+        # - Update texture cache
+        # - Notify renderer of texture updates

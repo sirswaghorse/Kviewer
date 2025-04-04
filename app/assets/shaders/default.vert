@@ -1,31 +1,21 @@
-#version 120
+#version 330 core
 
-// Input vertex data
-attribute vec3 position;
-attribute vec3 normal;
-attribute vec2 texCoord;
+layout(location = 0) in vec3 position;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 texCoord;
 
-// Output data to fragment shader
-varying vec3 fragmentNormal;
-varying vec2 fragmentTexCoord;
-varying vec3 fragmentPosition;
+out vec3 vertexNormal;
+out vec3 fragPos;
+out vec2 texCoordinates;
 
-// Uniforms
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-void main() {
-    // Calculate position
+void main()
+{
     gl_Position = projection * view * model * vec4(position, 1.0);
-    
-    // Calculate fragment position in world space
-    fragmentPosition = vec3(model * vec4(position, 1.0));
-    
-    // Calculate normal in world space
-    // The normal matrix is the transpose of the inverse of the model matrix
-    fragmentNormal = mat3(transpose(inverse(model))) * normal;
-    
-    // Pass texture coordinates to fragment shader
-    fragmentTexCoord = texCoord;
+    fragPos = vec3(model * vec4(position, 1.0));
+    vertexNormal = mat3(transpose(inverse(model))) * normal;
+    texCoordinates = texCoord;
 }

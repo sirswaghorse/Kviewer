@@ -1,8 +1,4 @@
 """
-Network package for the KitelyView application.
-Handles all communication with OpenSimulator grids.
+Network package for KitelyView.
+Handles communication with OpenSimulator servers.
 """
-
-from app.network.connection import GridConnection
-from app.network.opensim_protocol import OpenSimProtocol
-from app.network.packet_handler import PacketHandler

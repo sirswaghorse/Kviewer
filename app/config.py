@@ -6,7 +6,8 @@ Handles user preferences, grid settings, and application configuration.
 import os
 import json
 import logging
-from pathlib import Path
+import platform
+import appdirs
 
 class Config:
     """Configuration manager class"""
@@ -36,115 +37,154 @@ class Config:
     
     def __init__(self):
         """Initialize configuration"""
-        self.logger = logging.getLogger("kitelyview.config")
+        self.logger = logging.getLogger("kitelyview")
+        self.app_name = "KitelyView"
+        self.config_file = "config.json"
+        
+        # Set platform-specific paths
         self.config_dir = self._get_config_dir()
-        self.config_file = self.config_dir / "config.json"
+        self.DEFAULT_CONFIG["paths"]["cache_dir"] = self._get_cache_dir()
+        self.DEFAULT_CONFIG["paths"]["log_dir"] = self._get_log_dir()
+        
+        # Load configuration
         self.config = self._load_config()
         
     def _get_config_dir(self):
         """Get platform-specific configuration directory"""
-        if os.name == "nt":  # Windows
-            config_dir = Path(os.environ.get("APPDATA")) / "KitelyView"
-        else:  # Linux (Fedora, Ubuntu)
-            config_dir = Path(os.environ.get("HOME")) / ".config" / "kitelyview"
-            
-        # Create the directory if it doesn't exist
-        if not config_dir.exists():
-            config_dir.mkdir(parents=True, exist_ok=True)
-            self.logger.info(f"Created config directory: {config_dir}")
-            
-        return config_dir
+        try:
+            config_dir = appdirs.user_config_dir(self.app_name)
+        except ImportError:
+            # Fallback if appdirs is not available
+            if platform.system() == "Windows":
+                config_dir = os.path.join(os.environ.get("APPDATA", ""), self.app_name)
+            elif platform.system() == "Darwin":  # macOS
+                config_dir = os.path.expanduser(f"~/Library/Preferences/{self.app_name}")
+            else:  # Linux/Unix
+                config_dir = os.path.expanduser(f"~/.config/{self.app_name}")
         
+        # For Replit environment, use local config
+        if os.environ.get("REPL_ID"):
+            config_dir = ".config"
+            
+        os.makedirs(config_dir, exist_ok=True)
+        return config_dir
+    
     def _get_cache_dir(self):
         """Get platform-specific cache directory"""
-        if os.name == "nt":  # Windows
-            cache_dir = Path(os.environ.get("LOCALAPPDATA")) / "KitelyView" / "Cache"
-        else:  # Linux (Fedora, Ubuntu)
-            cache_dir = Path(os.environ.get("HOME")) / ".cache" / "kitelyview"
-            
-        # Create the directory if it doesn't exist
-        if not cache_dir.exists():
-            cache_dir.mkdir(parents=True, exist_ok=True)
-            self.logger.info(f"Created cache directory: {cache_dir}")
-            
-        return cache_dir
+        try:
+            cache_dir = appdirs.user_cache_dir(self.app_name)
+        except ImportError:
+            # Fallback if appdirs is not available
+            if platform.system() == "Windows":
+                cache_dir = os.path.join(os.environ.get("LOCALAPPDATA", ""), self.app_name, "Cache")
+            elif platform.system() == "Darwin":  # macOS
+                cache_dir = os.path.expanduser(f"~/Library/Caches/{self.app_name}")
+            else:  # Linux/Unix
+                cache_dir = os.path.expanduser(f"~/.cache/{self.app_name}")
         
+        # For Replit environment, use local cache
+        if os.environ.get("REPL_ID"):
+            cache_dir = ".cache"
+            
+        os.makedirs(cache_dir, exist_ok=True)
+        return cache_dir
+    
     def _get_log_dir(self):
         """Get platform-specific log directory"""
-        if os.name == "nt":  # Windows
-            log_dir = Path(os.environ.get("LOCALAPPDATA")) / "KitelyView" / "Logs"
-        else:  # Linux (Fedora, Ubuntu)
-            log_dir = Path(os.environ.get("HOME")) / ".local" / "share" / "kitelyview" / "logs"
-            
-        # Create the directory if it doesn't exist
-        if not log_dir.exists():
-            log_dir.mkdir(parents=True, exist_ok=True)
-            self.logger.info(f"Created log directory: {log_dir}")
-            
-        return log_dir
+        try:
+            log_dir = appdirs.user_log_dir(self.app_name)
+        except ImportError:
+            # Fallback if appdirs is not available
+            if platform.system() == "Windows":
+                log_dir = os.path.join(os.environ.get("LOCALAPPDATA", ""), self.app_name, "Logs")
+            elif platform.system() == "Darwin":  # macOS
+                log_dir = os.path.expanduser(f"~/Library/Logs/{self.app_name}")
+            else:  # Linux/Unix
+                log_dir = os.path.expanduser(f"~/.local/share/{self.app_name}/logs")
         
+        # For Replit environment, use local logs
+        if os.environ.get("REPL_ID"):
+            log_dir = "logs"
+            
+        os.makedirs(log_dir, exist_ok=True)
+        return log_dir
+    
     def _load_config(self):
         """Load configuration from file or create default"""
-        config = self.DEFAULT_CONFIG.copy()
+        config_path = os.path.join(self.config_dir, self.config_file)
         
-        # Set platform-specific paths
-        config["paths"]["cache_dir"] = str(self._get_cache_dir())
-        config["paths"]["log_dir"] = str(self._get_log_dir())
-        
-        # Try to load from file
-        if self.config_file.exists():
+        # Check if config file exists
+        if os.path.exists(config_path):
             try:
-                with open(self.config_file, 'r') as f:
+                with open(config_path, 'r') as f:
                     loaded_config = json.load(f)
-                    
-                # Merge loaded config with default
-                self._merge_configs(config, loaded_config)
-                self.logger.info(f"Loaded configuration from {self.config_file}")
-            except Exception as e:
-                self.logger.error(f"Error loading config file: {e}")
+                
+                # Merge with default config to ensure all keys exist
+                merged_config = self._merge_configs(self.DEFAULT_CONFIG, loaded_config)
+                self.logger.info("Configuration loaded from file")
+                return merged_config
+            
+            except (json.JSONDecodeError, IOError) as e:
+                self.logger.error(f"Error loading configuration: {e}")
+                self.logger.info("Using default configuration")
+                return self.DEFAULT_CONFIG.copy()
         else:
             # Create default config file
-            self.save_config(config)
-            self.logger.info(f"Created default configuration file at {self.config_file}")
+            try:
+                os.makedirs(os.path.dirname(config_path), exist_ok=True)
+                with open(config_path, 'w') as f:
+                    json.dump(self.DEFAULT_CONFIG, f, indent=4)
+                self.logger.info("Default configuration created")
+            except IOError as e:
+                self.logger.error(f"Error creating default configuration file: {e}")
             
-        return config
-        
+            return self.DEFAULT_CONFIG.copy()
+    
     def _merge_configs(self, base_config, new_config):
         """Recursively merge configuration dictionaries"""
+        merged = base_config.copy()
+        
         for key, value in new_config.items():
-            if key in base_config:
-                if isinstance(value, dict) and isinstance(base_config[key], dict):
-                    self._merge_configs(base_config[key], value)
-                else:
-                    base_config[key] = value
+            if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
+                merged[key] = self._merge_configs(merged[key], value)
             else:
-                base_config[key] = value
+                merged[key] = value
                 
+        return merged
+    
     def get(self, section, key=None):
         """Get a configuration value"""
-        if section in self.config:
-            if key is None:
-                return self.config[section]
-            elif key in self.config[section]:
-                return self.config[section][key]
-        return None
+        if section not in self.config:
+            return None
         
+        if key is None:
+            return self.config[section]
+        
+        if key not in self.config[section]:
+            return None
+            
+        return self.config[section][key]
+    
     def set(self, section, key, value):
         """Set a configuration value"""
         if section not in self.config:
             self.config[section] = {}
+            
         self.config[section][key] = value
+        self.save_config()
         
     def save_config(self, config=None):
         """Save configuration to file"""
         if config is None:
             config = self.config
             
+        config_path = os.path.join(self.config_dir, self.config_file)
+        
         try:
-            with open(self.config_file, 'w') as f:
+            with open(config_path, 'w') as f:
                 json.dump(config, f, indent=4)
-            self.logger.info(f"Saved configuration to {self.config_file}")
+            self.logger.info("Configuration saved to file")
             return True
-        except Exception as e:
-            self.logger.error(f"Error saving config file: {e}")
+        except IOError as e:
+            self.logger.error(f"Error saving configuration: {e}")
             return False

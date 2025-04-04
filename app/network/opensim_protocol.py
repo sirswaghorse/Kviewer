@@ -4,10 +4,8 @@ Handles packet formatting and parsing for communication with OpenSim grids.
 """
 
 import struct
-import time
-import uuid
-import zlib
 import logging
+import zlib
 from enum import Enum, auto
 
 class PacketFlags(Enum):
@@ -25,35 +23,35 @@ class PacketFrequency(Enum):
 
 class MessageType(Enum):
     """Message types for OpenSim protocol"""
-    # Authentication
+    # Session management
     UseCircuitCode = auto()
     CompleteAgentMovement = auto()
     AgentUpdate = auto()
     LogoutRequest = auto()
     
-    # Chat and IM
+    # Chat/IM system
     ChatFromViewer = auto()
     ChatFromSimulator = auto()
     ImprovedInstantMessage = auto()
     
-    # Object updates
+    # Object system
     ObjectAdd = auto()
     ObjectUpdate = auto()
     ObjectDelete = auto()
     ImprovedTerseObjectUpdate = auto()
     
-    # Avatar updates
+    # Avatar system
     AvatarAnimation = auto()
     AvatarAppearance = auto()
     
-    # Region
+    # Region handshake
     RegionHandshake = auto()
     RegionHandshakeReply = auto()
     
-    # Terrain
+    # Terrain and layers
     LayerData = auto()
     
-    # Asset
+    # Asset system
     TransferRequest = auto()
     TransferInfo = auto()
     TransferPacket = auto()
@@ -62,25 +60,25 @@ class MessageType(Enum):
     # Simulator stats
     SimStats = auto()
     
-    # Inventory
+    # Inventory system
     InventoryFolder = auto()
     InventoryItem = auto()
     
-    # Textures
+    # Texture system
     RequestImage = auto()
     ImageData = auto()
     
-    # Group
+    # Group system
     AgentGroupDataUpdate = auto()
     GroupNoticeUpdate = auto()
     
-    # Camera
+    # Camera system
     AgentCameraUpdate = auto()
     
-    # Movement
+    # Teleport/movement system
     AgentMovementComplete = auto()
     
-    # Generic message system
+    # Misc/generic
     GenericMessage = auto()
 
 class OpenSimProtocol:
@@ -88,133 +86,165 @@ class OpenSimProtocol:
     
     def __init__(self):
         """Initialize the protocol handler"""
-        self.logger = logging.getLogger("kitelyview.network.protocol")
-        self.logger.info("Initializing OpenSim protocol handler")
-        
-        # Initialize message templates
+        self.logger = logging.getLogger("kitelyview")
+        self.message_templates = {}
         self._init_message_templates()
-        
-        self.logger.info("OpenSim protocol handler initialized")
         
     def _init_message_templates(self):
         """Initialize message templates for OpenSim protocol"""
-        # This would normally load a set of message templates
-        # that define the structure of each packet type
-        # For simplicity in this implementation, we'll just
-        # define a few common message types
+        # In a real implementation, this would define all packet structures
+        # For this demo, we'll just define a few common ones
         
-        self.message_templates = {
-            MessageType.UseCircuitCode: {
-                "frequency": PacketFrequency.HIGH,
-                "trusted": True,
-                "structure": {
-                    "CircuitCode": "U32",
-                    "SessionID": "UUID",
-                    "ID": "UUID"
-                }
-            },
-            
-            MessageType.CompleteAgentMovement: {
-                "frequency": PacketFrequency.HIGH,
-                "trusted": True,
-                "structure": {
-                    "AgentID": "UUID",
-                    "SessionID": "UUID",
-                    "CircuitCode": "U32"
-                }
-            },
-            
-            MessageType.ChatFromViewer: {
-                "frequency": PacketFrequency.MEDIUM,
-                "trusted": True,
-                "structure": {
-                    "AgentData": {
-                        "AgentID": "UUID",
-                        "SessionID": "UUID"
-                    },
-                    "ChatData": {
-                        "Message": "String",
-                        "Type": "U8",
-                        "Channel": "S32"
-                    }
-                }
-            },
-            
-            MessageType.AgentUpdate: {
-                "frequency": PacketFrequency.HIGH,
-                "trusted": True,
-                "structure": {
-                    "AgentData": {
-                        "AgentID": "UUID",
-                        "SessionID": "UUID",
-                        "BodyRotation": "Quaternion",
-                        "HeadRotation": "Quaternion",
-                        "State": "U8",
-                        "CameraCenter": "Vector3",
-                        "CameraAtAxis": "Vector3",
-                        "CameraLeftAxis": "Vector3",
-                        "CameraUpAxis": "Vector3",
-                        "Far": "F32",
-                        "ControlFlags": "U32",
-                        "Flags": "U8"
-                    }
-                }
-            }
+        # UseCircuitCode message
+        self.message_templates[MessageType.UseCircuitCode] = {
+            "frequency": PacketFrequency.HIGH,
+            "trusted": True,
+            "blocked": False,
+            "fields": [
+                {"name": "CircuitCode", "type": "U32"},
+                {"name": "SessionID", "type": "UUID"},
+                {"name": "ID", "type": "UUID"}
+            ]
         }
+        
+        # ChatFromViewer message
+        self.message_templates[MessageType.ChatFromViewer] = {
+            "frequency": PacketFrequency.MEDIUM,
+            "trusted": False,
+            "blocked": False,
+            "fields": [
+                {"name": "AgentData", "type": "block", "fields": [
+                    {"name": "AgentID", "type": "UUID"},
+                    {"name": "SessionID", "type": "UUID"}
+                ]},
+                {"name": "ChatData", "type": "block", "fields": [
+                    {"name": "Channel", "type": "S32"},
+                    {"name": "Message", "type": "String"},
+                    {"name": "Type", "type": "U8"},
+                    {"name": "Position", "type": "Vector3"}
+                ]}
+            ]
+        }
+        
+        # ChatFromSimulator message
+        self.message_templates[MessageType.ChatFromSimulator] = {
+            "frequency": PacketFrequency.MEDIUM,
+            "trusted": True,
+            "blocked": False,
+            "fields": [
+                {"name": "ChatData", "type": "block", "fields": [
+                    {"name": "FromName", "type": "String"},
+                    {"name": "SourceID", "type": "UUID"},
+                    {"name": "OwnerID", "type": "UUID"},
+                    {"name": "SourceType", "type": "U8"},
+                    {"name": "ChatType", "type": "U8"},
+                    {"name": "Audible", "type": "U8"},
+                    {"name": "Position", "type": "Vector3"},
+                    {"name": "Message", "type": "String"}
+                ]}
+            ]
+        }
+        
+        # ImprovedInstantMessage
+        self.message_templates[MessageType.ImprovedInstantMessage] = {
+            "frequency": PacketFrequency.MEDIUM,
+            "trusted": False,
+            "blocked": False,
+            "fields": [
+                {"name": "AgentData", "type": "block", "fields": [
+                    {"name": "AgentID", "type": "UUID"},
+                    {"name": "SessionID", "type": "UUID"}
+                ]},
+                {"name": "MessageBlock", "type": "block", "fields": [
+                    {"name": "FromGroup", "type": "BOOL"},
+                    {"name": "ToAgentID", "type": "UUID"},
+                    {"name": "ParentEstateID", "type": "U32"},
+                    {"name": "RegionID", "type": "UUID"},
+                    {"name": "Position", "type": "Vector3"},
+                    {"name": "Offline", "type": "U8"},
+                    {"name": "Dialog", "type": "U8"},
+                    {"name": "ID", "type": "UUID"},
+                    {"name": "Timestamp", "type": "U32"},
+                    {"name": "FromAgentName", "type": "String"},
+                    {"name": "Message", "type": "String"},
+                    {"name": "BinaryBucket", "type": "Variable"}
+                ]}
+            ]
+        }
+        
+        # More message templates would be defined here...
         
     def create_packet(self, message_type, data):
         """
         Create a packet for the given message type and data
         Returns a binary packet ready to be sent
         """
-        try:
-            # Get message template
-            template = self.message_templates.get(message_type)
-            if not template:
-                self.logger.error(f"Unknown message type: {message_type}")
-                return None
-                
-            # In a real implementation, you would serialize the data
-            # according to the template structure, apply zero-coding if needed,
-            # and add appropriate headers
-            
-            # For this simplified implementation, we'll just return the data as-is
-            return data
-            
-        except Exception as e:
-            self.logger.error(f"Error creating packet: {e}", exc_info=True)
+        if message_type not in self.message_templates:
+            self.logger.error(f"Unknown message type: {message_type}")
             return None
             
+        template = self.message_templates[message_type]
+        
+        # In a real implementation, this would serialize data according to template
+        # For this demo, we'll return a placeholder binary string
+        
+        # Example of what a real implementation might look like:
+        # packet_header = struct.pack('>BBI', 
+        #     template["frequency"].value | PacketFlags.RELIABLE.value,
+        #     0,  # sequence number
+        #     message_type.value
+        # )
+        # 
+        # field_data = bytearray()
+        # for field in template["fields"]:
+        #     # Serialize each field according to its type
+        #     if field["type"] == "U32":
+        #         field_data.extend(struct.pack('>I', data[field["name"]]))
+        #     elif field["type"] == "UUID":
+        #         field_data.extend(data[field["name"]].bytes)
+        #     # ... more field types ...
+        # 
+        # return packet_header + field_data
+        
+        # For demo, just return simple placeholder with message type
+        placeholder = f"PACKET:{message_type.name}:{str(data)}"
+        return placeholder.encode('utf-8')
+        
     def parse_packet(self, packet_data):
         """
         Parse a packet and return the message type and data
         Returns (message_type, data) tuple or (None, None) on error
         """
+        # In a real implementation, this would deserialize a binary packet
+        # For this demo, we'll just parse our placeholder format
+        
         try:
-            # In a real implementation, you would:
-            # 1. Decode the zero-coding if needed
-            # 2. Extract the message number from the header
-            # 3. Look up the message template
-            # 4. Parse the packet according to the template
-            # 5. Return the parsed data
-            
-            # For this simplified implementation, we'll just assume the packet
-            # is already parsed and has a "type" field indicating the message type
-            
-            if isinstance(packet_data, dict) and "type" in packet_data:
-                # Find message type by name
-                message_type_name = packet_data["type"]
-                message_type = None
+            if isinstance(packet_data, bytes):
+                packet_str = packet_data.decode('utf-8')
+            else:
+                packet_str = packet_data
                 
-                for mtype in MessageType:
-                    if mtype.name == message_type_name:
-                        message_type = mtype
-                        break
-                        
-                return message_type, packet_data.get("data", {})
-                
-            return None, None
+            if packet_str.startswith("PACKET:"):
+                parts = packet_str.split(":", 2)
+                if len(parts) == 3:
+                    msg_type_str = parts[1]
+                    data_str = parts[2]
+                    
+                    # Try to match message type
+                    msg_type = None
+                    for mt in MessageType:
+                        if mt.name == msg_type_str:
+                            msg_type = mt
+                            break
+                    
+                    if msg_type:
+                        # For demo, just return the data string
+                        # In a real implementation, this would be properly deserialized
+                        return (msg_type, data_str)
+            
+            self.logger.error(f"Failed to parse packet: {packet_data}")
+            return (None, None)
             
         except Exception as e:
-            self.logger.error(f"Error parsing packet: {e}", exc_info=True)
-            return None, None
+            self.logger.error(f"Error parsing packet: {e}")
+            return (None, None)

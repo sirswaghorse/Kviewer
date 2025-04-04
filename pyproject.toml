@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "appdirs>=1.4.4",
     "dummy-wx>=0.3.0",
     "numpy>=2.2.4",
     "pillow>=11.1.0",

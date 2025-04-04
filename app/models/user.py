@@ -1,158 +1,165 @@
 """
 User model for KitelyView.
-Represents the logged-in user's identity and session data.
+Represents a user account in the OpenSimulator grid.
 """
 
-import logging
-import time
-
 class User:
-    """Represents a logged-in user in the OpenSimulator grid"""
+    """Represents a user in the virtual world"""
     
-    def __init__(self, data=None):
-        """Initialize user object with optional data"""
-        self.logger = logging.getLogger("kitelyview.models.user")
+    def __init__(self, user_id=None, name=None):
+        """Initialize user with ID and name"""
+        self.user_id = user_id
+        self.name = name
         
-        # User identification
-        self.first_name = "Guest"
-        self.last_name = "User"
+        # Personal information
+        self.first_name = None
+        self.last_name = None
         self.display_name = None
-        self.agent_id = None
+        self.email = None
         
-        # Session data
-        self.session_id = None
-        self.secure_session_id = None
-        self.circuit_code = None
-        self.start_location = "last"
-        self.home_location = None
+        # Status information
+        self.online = False
+        self.last_login = None
+        self.created_date = None
         
-        # Grid access
-        self.access_level = "M"  # PG/Mature/Adult
-        self.max_agent_groups = 42
+        # Social information
+        self.friends = {}  # Dict of {friend_id: {"name": name, "online": bool}}
+        self.groups = {}   # Dict of {group_id: {"name": name, "title": title}}
         
-        # Login info
-        self.logged_in = False
-        self.login_time = None
-        self.last_region = None
+        # Current region/position information
+        self.current_region_id = None
         
-        # Inventory root folders
-        self.inventory_root = None
-        self.library_root = None
-        self.library_owner = None
-        
-        # Update with provided data
-        if data:
-            self.update_from_data(data)
-            
+        # Parse name into first_name and last_name if provided
+        if name:
+            name_parts = name.split(" ", 1)
+            if len(name_parts) > 0:
+                self.first_name = name_parts[0]
+            if len(name_parts) > 1:
+                self.last_name = name_parts[1]
+    
+    def get_full_name(self):
+        """Get the user's full name"""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return self.name
+    
+    def get_display_name(self):
+        """Get the user's display name, falling back to regular name if not set"""
+        if self.display_name:
+            return self.display_name
+        return self.get_full_name()
+    
+    def set_online_status(self, status):
+        """Set the user's online status"""
+        self.online = status
+    
+    def add_friend(self, friend_id, friend_name):
+        """Add a friend to the user's friend list"""
+        self.friends[friend_id] = {
+            "name": friend_name,
+            "online": False
+        }
+    
+    def remove_friend(self, friend_id):
+        """Remove a friend from the user's friend list"""
+        if friend_id in self.friends:
+            del self.friends[friend_id]
+    
+    def update_friend_status(self, friend_id, online):
+        """Update a friend's online status"""
+        if friend_id in self.friends:
+            self.friends[friend_id]["online"] = online
+    
+    def add_group(self, group_id, group_name):
+        """Add a group to the user's group list"""
+        self.groups[group_id] = {
+            "name": group_name,
+            "title": "Member"  # Default title
+        }
+    
+    def remove_group(self, group_id):
+        """Remove a group from the user's group list"""
+        if group_id in self.groups:
+            del self.groups[group_id]
+    
     def update_from_data(self, data):
-        """Update user from login response data"""
-        # Basic identification
-        if "first_name" in data:
-            self.first_name = data["first_name"]
-            
-        if "last_name" in data:
-            self.last_name = data["last_name"]
-            
+        """Update user data from server response"""
+        if "user_id" in data:
+            self.user_id = data["user_id"]
+        
+        if "name" in data:
+            self.name = data["name"]
+            name_parts = self.name.split(" ", 1)
+            if len(name_parts) > 0:
+                self.first_name = name_parts[0]
+            if len(name_parts) > 1:
+                self.last_name = name_parts[1]
+        
         if "display_name" in data:
             self.display_name = data["display_name"]
-            
-        if "agent_id" in data:
-            self.agent_id = data["agent_id"]
-            
-        # Session data
-        if "session_id" in data:
-            self.session_id = data["session_id"]
-            
-        if "secure_session_id" in data:
-            self.secure_session_id = data["secure_session_id"]
-            
-        if "circuit_code" in data:
-            if isinstance(data["circuit_code"], str):
-                self.circuit_code = int(data["circuit_code"])
-            else:
-                self.circuit_code = data["circuit_code"]
-                
-        if "start_location" in data:
-            self.start_location = data["start_location"]
-            
-        if "home" in data:
-            self.home_location = data["home"]
-            
-        # Grid access
-        if "agent_access" in data:
-            self.access_level = data["agent_access"]
-            
-        if "max_agent_groups" in data:
-            if isinstance(data["max_agent_groups"], str):
-                self.max_agent_groups = int(data["max_agent_groups"])
-            else:
-                self.max_agent_groups = data["max_agent_groups"]
-                
-        # Inventory root folders
-        if "inventory_root" in data:
-            self.inventory_root = data["inventory_root"]
-            
-        if "inventory_lib_root" in data:
-            self.library_root = data["inventory_lib_root"]
-            
-        if "inventory_lib_owner" in data:
-            self.library_owner = data["inventory_lib_owner"]
-            
-        # Set login state
-        if "login" in data and data["login"] == "true":
-            self.logged_in = True
-            self.login_time = time.time()
-            
-        # Log success
-        self.logger.info(f"Updated user data for {self.first_name} {self.last_name}")
-            
-    def get_full_name(self):
-        """Get user's full name"""
-        return f"{self.first_name} {self.last_name}"
         
-    def get_display_name(self):
-        """Get user's display name or full name if no display name"""
-        return self.display_name or self.get_full_name()
+        if "email" in data:
+            self.email = data["email"]
         
-    def is_logged_in(self):
-        """Check if user is logged in"""
-        return self.logged_in and self.session_id is not None
+        if "online" in data:
+            self.online = data["online"]
         
-    def can_access_mature(self):
-        """Check if user can access mature content"""
-        return self.access_level in ['M', 'A']
+        if "last_login" in data:
+            self.last_login = data["last_login"]
         
-    def can_access_adult(self):
-        """Check if user can access adult content"""
-        return self.access_level == 'A'
+        if "created_date" in data:
+            self.created_date = data["created_date"]
         
-    def logout(self):
-        """Log out the user"""
-        self.logged_in = False
-        self.session_id = None
-        self.secure_session_id = None
-        self.circuit_code = None
+        if "current_region_id" in data:
+            self.current_region_id = data["current_region_id"]
         
-        self.logger.info(f"Logged out user {self.first_name} {self.last_name}")
+        if "friends" in data:
+            # Update friends from data
+            for friend in data["friends"]:
+                friend_id = friend.get("id")
+                if friend_id:
+                    self.friends[friend_id] = {
+                        "name": friend.get("name", "Unknown"),
+                        "online": friend.get("online", False)
+                    }
         
+        if "groups" in data:
+            # Update groups from data
+            for group in data["groups"]:
+                group_id = group.get("id")
+                if group_id:
+                    self.groups[group_id] = {
+                        "name": group.get("name", "Unknown Group"),
+                        "title": group.get("title", "Member")
+                    }
+    
     def to_dict(self):
         """Convert user to dictionary"""
         return {
+            "user_id": self.user_id,
+            "name": self.name,
             "first_name": self.first_name,
             "last_name": self.last_name,
             "display_name": self.display_name,
-            "agent_id": self.agent_id,
-            "session_id": self.session_id,
-            "secure_session_id": self.secure_session_id,
-            "circuit_code": self.circuit_code,
-            "start_location": self.start_location,
-            "home_location": self.home_location,
-            "access_level": self.access_level,
-            "max_agent_groups": self.max_agent_groups,
-            "logged_in": self.logged_in,
-            "login_time": self.login_time,
-            "last_region": self.last_region,
-            "inventory_root": self.inventory_root,
-            "library_root": self.library_root,
-            "library_owner": self.library_owner
+            "email": self.email,
+            "online": self.online,
+            "last_login": self.last_login,
+            "created_date": self.created_date,
+            "current_region_id": self.current_region_id,
+            "friends": [
+                {
+                    "id": friend_id,
+                    "name": friend_data["name"],
+                    "online": friend_data["online"]
+                }
+                for friend_id, friend_data in self.friends.items()
+            ],
+            "groups": [
+                {
+                    "id": group_id,
+                    "name": group_data["name"],
+                    "title": group_data["title"]
+                }
+                for group_id, group_data in self.groups.items()
+            ]
         }

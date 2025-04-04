@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KitelyView Web Demo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>KitelyView</h1>
+            <p>A cross-platform OpenSimulator viewer for connecting to the Kitely grid</p>
+        </header>
+        
+        <div class="grid-container">
+            <section class="world-view">
+                <h2>World View</h2>
+                <div class="region-display">
+                    <div id="region-name">Not connected</div>
+                    <div id="region-position">Position: 0, 0, 0</div>
+                </div>
+                <div class="scene-container" id="scene-container">
+                    <div class="avatar" id="avatar">
+                        <div class="avatar-name">Test User</div>
+                    </div>
+                    <div class="ground"></div>
+                </div>
+            </section>
+            
+            <section class="user-info">
+                <h2>User Information</h2>
+                <div id="login-status">Not logged in</div>
+                <div id="user-details">
+                    <div id="user-name"></div>
+                    <div id="user-id"></div>
+                </div>
+                <div class="action-panel">
+                    <button id="start-button">Start Simulation</button>
+                    <div id="status-indicator" class="status-idle">Idle</div>
+                </div>
+            </section>
+            
+            <section class="chat-panel">
+                <h2>Chat</h2>
+                <div id="chat-messages" class="chat-container"></div>
+                <div class="chat-input">
+                    <input type="text" id="chat-text" placeholder="Type a message..." disabled>
+                    <button id="send-button" disabled>Send</button>
+                </div>
+            </section>
+            
+            <section class="log-panel">
+                <h2>System Log</h2>
+                <div id="system-log" class="log-container"></div>
+            </section>
+            
+            <section class="mini-map">
+                <h2>Mini Map</h2>
+                <div class="map-container">
+                    <div class="map-grid">
+                        <div class="map-marker" id="avatar-marker"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        
+        <footer>
+            <p>KitelyView Web Demo - For demonstration purposes only</p>
+        </footer>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

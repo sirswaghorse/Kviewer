@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 KitelyView Web Demo - A web-based demonstration of the KitelyView application.
-This script provides a web interface to visualize the simulation.
+This script provides a web interface to visualize the simulation with 3D capabilities.
 """
 
 import sys
@@ -11,18 +11,22 @@ import time
 import json
 import threading
 import queue
+import random
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO
+from flask_cors import CORS
 
 from app.utils.logger import setup_logger
 from app.config import Config
 from app.models.user import User
+from app.models.inventory import InventoryFolder, InventoryItem
 from app.network.connection import GridConnection
 
 # Initialize Flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'kitelyview-demo-secret'
-socketio = SocketIO(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Global variables for simulation state
 simulation_events = queue.Queue()
@@ -32,8 +36,24 @@ simulation_state = {
     "current_region": None,
     "position": [0, 0, 0],
     "chat_messages": [],
-    "inventory": [],
-    "status": "idle"
+    "inventory": {
+        "root": {
+            "name": "My Inventory", 
+            "items": []
+        }
+    },
+    "status": "idle",
+    "avatar_appearance": {
+        "height": 1.0,
+        "bodyShape": "athletic",
+        "skinColor": "#f2d2bd",
+        "hairStyle": "short",
+        "hairColor": "#523b22",
+        "outfitStyle": "casual",
+        "outfitPrimaryColor": "#3f51b5",
+        "outfitSecondaryColor": "#f44336"
+    },
+    "objects": []
 }
 
 # Custom log handler to capture log events for the web interface
@@ -60,6 +80,44 @@ class WebLogHandler(logging.Handler):
             "timestamp": time.time(),
             "level": record.levelname
         })
+
+# Initialize demo inventory
+def initialize_inventory():
+    """Initialize demo inventory with sample items"""
+    
+    # Create demo folders and items
+    simulation_state["inventory"] = {
+        "root": {
+            "name": "My Inventory",
+            "items": [
+                {"id": 1, "name": "Box", "type": "object", "description": "A simple box"},
+                {"id": 2, "name": "Sphere", "type": "object", "description": "A simple sphere"}
+            ]
+        },
+        "clothing": {
+            "name": "Clothing",
+            "items": [
+                {"id": 3, "name": "Blue Shirt", "type": "clothing", "description": "A blue shirt"},
+                {"id": 4, "name": "Black Pants", "type": "clothing", "description": "Black pants"}
+            ]
+        },
+        "objects": {
+            "name": "Objects",
+            "items": [
+                {"id": 5, "name": "Chair", "type": "object", "description": "A wooden chair"},
+                {"id": 6, "name": "Table", "type": "object", "description": "A wooden table"}
+            ]
+        },
+        "textures": {
+            "name": "Textures",
+            "items": [
+                {"id": 7, "name": "Wood", "type": "texture", "description": "Wood texture"},
+                {"id": 8, "name": "Metal", "type": "texture", "description": "Metal texture"}
+            ]
+        }
+    }
+    
+    logging.info("Demo inventory initialized with sample items")
 
 # Chat message callback for demo
 def on_chat_message(message):
@@ -227,6 +285,78 @@ def get_state():
     """Get the current simulation state"""
     return jsonify(simulation_state)
 
+@app.route('/api/inventory')
+def get_inventory():
+    """Get user inventory"""
+    return jsonify(simulation_state["inventory"])
+
+@app.route('/api/appearance', methods=['GET', 'POST'])
+def handle_appearance():
+    """Get or update avatar appearance"""
+    if request.method == 'GET':
+        return jsonify(simulation_state["avatar_appearance"])
+    
+    # Handle POST - update appearance
+    data = request.json
+    if not data:
+        return jsonify({"error": "No appearance data provided"}), 400
+    
+    # Update appearance data
+    for key, value in data.items():
+        if key in simulation_state["avatar_appearance"]:
+            simulation_state["avatar_appearance"][key] = value
+    
+    logging.info(f"Avatar appearance updated: {data}")
+    return jsonify({"status": "success", "appearance": simulation_state["avatar_appearance"]})
+
+@app.route('/api/objects', methods=['GET', 'POST', 'DELETE'])
+def handle_objects():
+    """Get, create, or delete world objects"""
+    if request.method == 'GET':
+        return jsonify(simulation_state["objects"])
+    
+    if request.method == 'POST':
+        # Create new object
+        data = request.json
+        if not data or "type" not in data:
+            return jsonify({"error": "Invalid object data"}), 400
+        
+        # Generate object ID
+        object_id = len(simulation_state["objects"]) + 1
+        
+        # Create new object
+        new_object = {
+            "id": object_id,
+            "type": data["type"],
+            "position": data.get("position", [0, 0, 0]),
+            "rotation": data.get("rotation", [0, 0, 0]),
+            "scale": data.get("scale", [1, 1, 1]),
+            "color": data.get("color", "#f44336"),
+            "properties": data.get("properties", {})
+        }
+        
+        # Add to objects list
+        simulation_state["objects"].append(new_object)
+        
+        logging.info(f"Object created: {new_object}")
+        return jsonify({"status": "success", "object": new_object})
+    
+    if request.method == 'DELETE':
+        # Delete object
+        object_id = request.args.get('id')
+        if not object_id:
+            return jsonify({"error": "No object ID provided"}), 400
+        
+        # Find and remove object
+        object_id = int(object_id)
+        for i, obj in enumerate(simulation_state["objects"]):
+            if obj["id"] == object_id:
+                removed = simulation_state["objects"].pop(i)
+                logging.info(f"Object deleted: {removed}")
+                return jsonify({"status": "success", "id": object_id})
+        
+        return jsonify({"error": "Object not found"}), 404
+
 @app.route('/api/start', methods=['POST'])
 def start_simulation():
     """Start the simulation"""
@@ -236,8 +366,10 @@ def start_simulation():
     simulation_state["current_region"] = None
     simulation_state["position"] = [0, 0, 0]
     simulation_state["chat_messages"] = []
-    simulation_state["inventory"] = []
     simulation_state["status"] = "starting"
+    
+    # Initialize inventory with sample items
+    initialize_inventory()
     
     # Clear event queue
     while not simulation_events.empty():
@@ -253,12 +385,81 @@ def start_simulation():
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection"""
-    print('Client connected')
+    logging.info('Client connected')
 
 @socketio.on('disconnect')
 def handle_disconnect():
     """Handle client disconnection"""
-    print('Client disconnected')
+    logging.info('Client disconnected')
+
+@socketio.on('chat_message')
+def handle_chat_message(data):
+    """Handle chat message from client"""
+    if not isinstance(data, dict) or 'message' not in data:
+        return
+    
+    message = data["message"]
+    
+    # Add chat message to simulation state
+    chat_data = {
+        "from": "You",
+        "message": message,
+        "timestamp": time.time()
+    }
+    
+    simulation_state["chat_messages"].append(chat_data)
+    
+    # Emit to all clients
+    socketio.emit('chat_message', chat_data)
+    
+    # Log the message
+    logging.info(f"Chat message from user: {message}")
+
+@socketio.on('avatar_update')
+def handle_avatar_update(data):
+    """Handle avatar appearance update from client"""
+    if not isinstance(data, dict):
+        return
+    
+    # Update avatar appearance
+    for key, value in data.items():
+        if key in simulation_state["avatar_appearance"]:
+            simulation_state["avatar_appearance"][key] = value
+    
+    # Log the update
+    logging.info(f"Avatar appearance updated via socket: {data}")
+    
+    # Emit update to all clients
+    socketio.emit('avatar_updated', simulation_state["avatar_appearance"])
+
+@socketio.on('object_create')
+def handle_object_create(data):
+    """Handle object creation from client"""
+    if not isinstance(data, dict) or 'type' not in data:
+        return
+    
+    # Generate object ID
+    object_id = len(simulation_state["objects"]) + 1
+    
+    # Create new object
+    new_object = {
+        "id": object_id,
+        "type": data["type"],
+        "position": data.get("position", [0, 0, 0]),
+        "rotation": data.get("rotation", [0, 0, 0]),
+        "scale": data.get("scale", [1, 1, 1]),
+        "color": data.get("color", "#f44336"),
+        "properties": data.get("properties", {})
+    }
+    
+    # Add to objects list
+    simulation_state["objects"].append(new_object)
+    
+    # Log the creation
+    logging.info(f"Object created via socket: {new_object}")
+    
+    # Emit update to all clients
+    socketio.emit('object_created', new_object)
 
 def create_default_directories():
     """Create necessary directories"""
@@ -266,7 +467,11 @@ def create_default_directories():
     os.makedirs('static', exist_ok=True)
     os.makedirs('static/css', exist_ok=True)
     os.makedirs('static/js', exist_ok=True)
+    os.makedirs('static/js/three', exist_ok=True)
+    os.makedirs('static/js/ui', exist_ok=True)
     os.makedirs('static/img', exist_ok=True)
+    os.makedirs('static/models', exist_ok=True)
+    os.makedirs('static/textures', exist_ok=True)
 
 if __name__ == '__main__':
     create_default_directories()

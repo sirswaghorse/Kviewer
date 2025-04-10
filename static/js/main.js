@@ -1,5 +1,25 @@
+/**
+ * KitelyView - Main Application Script
+ * Coordinates all modules and handles communication with the server
+ */
+
+// Global function to add log entries (used by multiple modules)
+function addLogEntry(message, level) {
+    const systemLog = document.getElementById('system-log');
+    if (!systemLog) return;
+    
+    const logEntry = document.createElement('div');
+    logEntry.className = `log-entry log-${level}`;
+    logEntry.textContent = message;
+    
+    systemLog.appendChild(logEntry);
+    
+    // Auto-scroll to bottom
+    systemLog.scrollTop = systemLog.scrollHeight;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Elements
+    // UI Elements
     const startButton = document.getElementById('start-button');
     const statusIndicator = document.getElementById('status-indicator');
     const loginStatus = document.getElementById('login-status');
@@ -8,11 +28,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const regionName = document.getElementById('region-name');
     const regionPosition = document.getElementById('region-position');
     const chatMessages = document.getElementById('chat-messages');
-    const systemLog = document.getElementById('system-log');
     const chatText = document.getElementById('chat-text');
     const sendButton = document.getElementById('send-button');
-    const avatar = document.getElementById('avatar');
-    const avatarMarker = document.getElementById('avatar-marker');
+    const viewControls = document.querySelectorAll('#view-controls button');
+    
+    // Movement control variables
+    const movementControls = {
+        forward: false,
+        backward: false,
+        left: false,
+        right: false,
+        up: false,
+        down: false
+    };
     
     // Socket.io connection
     const socket = io();
@@ -20,39 +48,53 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners
     startButton.addEventListener('click', startSimulation);
     
-    // Connect to server
+    // Movement control listeners
+    document.getElementById('move-forward').addEventListener('mousedown', () => movementControls.forward = true);
+    document.getElementById('move-forward').addEventListener('mouseup', () => movementControls.forward = false);
+    document.getElementById('move-backward').addEventListener('mousedown', () => movementControls.backward = true);
+    document.getElementById('move-backward').addEventListener('mouseup', () => movementControls.backward = false);
+    document.getElementById('move-left').addEventListener('mousedown', () => movementControls.left = true);
+    document.getElementById('move-left').addEventListener('mouseup', () => movementControls.left = false);
+    document.getElementById('move-right').addEventListener('mousedown', () => movementControls.right = true);
+    document.getElementById('move-right').addEventListener('mouseup', () => movementControls.right = false);
+    document.getElementById('move-up').addEventListener('mousedown', () => movementControls.up = true);
+    document.getElementById('move-up').addEventListener('mouseup', () => movementControls.up = false);
+    document.getElementById('move-down').addEventListener('mousedown', () => movementControls.down = true);
+    document.getElementById('move-down').addEventListener('mouseup', () => movementControls.down = false);
+    
+    // Chat input listeners
+    chatText.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendChatMessage();
+        }
+    });
+    
+    sendButton.addEventListener('click', sendChatMessage);
+    
+    // Socket events
     socket.on('connect', function() {
         console.log('Connected to server');
     });
     
-    // Handle chat messages
     socket.on('chat_message', function(data) {
         addChatMessage(data.from, data.message);
-        
-        // Auto-scroll to bottom
-        chatMessages.scrollTop = chatMessages.scrollHeight;
     });
     
-    // Handle status updates
     socket.on('status_update', function(data) {
         updateStatus(data.status);
     });
     
-    // Handle teleport events
     socket.on('teleport', function(data) {
+        // Update region info in the UI
         updateRegionInfo(data.region, data.position);
         
-        // Move avatar on the screen
-        const x = (data.position[0] / 256) * 100; // Scale to percentage
-        const y = 100 - (data.position[1] / 256) * 100; // Invert Y axis and scale
+        // Update marker on mini-map
+        updateMiniMapMarker(data.position[0], data.position[1]);
         
-        // Update avatar position with animation
-        avatar.style.left = `${x}%`;
-        avatar.style.bottom = `${40 + (data.position[2] / 100) * 10}%`; // Height based on Z
-        
-        // Update mini-map marker
-        avatarMarker.style.left = `${x}%`;
-        avatarMarker.style.top = `${y}%`;
+        // If 3D avatar is available, update its position
+        if (avatarManager) {
+            avatarManager.setPosition(data.position[0], data.position[2], data.position[1]); // Note: Y and Z are swapped in Three.js
+        }
         
         // Add log entry
         addLogEntry(`Teleported to ${data.region} at position ${data.position.join(', ')}`, 'info');
@@ -79,6 +121,11 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Start polling for events
             pollEvents();
+            
+            // Start movement loop if avatar exists
+            if (avatarManager) {
+                startMovementLoop();
+            }
         })
         .catch(error => {
             console.error('Error starting simulation:', error);
@@ -119,6 +166,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Update region info if available
                     if (data.current_region) {
                         updateRegionInfo(data.current_region, data.position);
+                        
+                        // Update avatar position if we have one
+                        if (data.position && avatarManager) {
+                            avatarManager.setPosition(data.position[0], data.position[2], data.position[1]);
+                        }
                     }
                 })
                 .catch(error => {
@@ -220,6 +272,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    function updateMiniMapMarker(x, y) {
+        const mapMarker = document.getElementById('avatar-marker');
+        if (!mapMarker) return;
+        
+        // Convert world coordinates to minimap percentages
+        const mapX = (x / 256) * 100;
+        const mapY = 100 - (y / 256) * 100; // Invert Y for screen coordinates
+        
+        // Update marker position
+        mapMarker.style.left = `${mapX}%`;
+        mapMarker.style.top = `${mapY}%`;
+    }
+    
     function addChatMessage(sender, message) {
         const messageElement = document.createElement('div');
         messageElement.className = 'chat-message';
@@ -236,17 +301,82 @@ document.addEventListener('DOMContentLoaded', function() {
         messageElement.appendChild(textElement);
         
         chatMessages.appendChild(messageElement);
-    }
-    
-    function addLogEntry(message, level) {
-        const logEntry = document.createElement('div');
-        logEntry.className = `log-entry log-${level}`;
-        logEntry.textContent = message;
-        
-        systemLog.appendChild(logEntry);
         
         // Auto-scroll to bottom
-        systemLog.scrollTop = systemLog.scrollHeight;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+    
+    function sendChatMessage() {
+        const message = chatText.value.trim();
+        if (message === '') return;
+        
+        // In demo mode, we simulate sending a chat message
+        addChatMessage('You', message);
+        addLogEntry(`Chat message sent: ${message}`, 'info');
+        
+        // Clear input field
+        chatText.value = '';
+    }
+    
+    function startMovementLoop() {
+        let lastTime = 0;
+        const moveSpeed = 5; // Units per second
+        
+        function moveAvatar(time) {
+            // Calculate time delta
+            const delta = (time - lastTime) / 1000; // Convert to seconds
+            lastTime = time;
+            
+            // Only process movement if avatar and scene exist
+            if (avatarManager && avatarManager.avatar && sceneManager) {
+                // Get current position
+                const position = avatarManager.avatar.position.clone();
+                let moved = false;
+                
+                // Apply movement based on controls
+                if (movementControls.forward) {
+                    position.z -= moveSpeed * delta;
+                    moved = true;
+                }
+                if (movementControls.backward) {
+                    position.z += moveSpeed * delta;
+                    moved = true;
+                }
+                if (movementControls.left) {
+                    position.x -= moveSpeed * delta;
+                    moved = true;
+                }
+                if (movementControls.right) {
+                    position.x += moveSpeed * delta;
+                    moved = true;
+                }
+                if (movementControls.up) {
+                    position.y += moveSpeed * delta;
+                    moved = true;
+                }
+                if (movementControls.down) {
+                    position.y -= moveSpeed * delta;
+                    moved = true;
+                }
+                
+                // Update avatar position
+                if (moved) {
+                    avatarManager.setPosition(position.x, position.y, position.z);
+                    
+                    // Update mini-map marker (flipping z to y for 2D map)
+                    updateMiniMapMarker(position.x, position.z);
+                    
+                    // Update position display
+                    regionPosition.textContent = `Position: ${Math.round(position.x)}, ${Math.round(position.z)}, ${Math.round(position.y)}`;
+                }
+            }
+            
+            // Continue animation loop
+            requestAnimationFrame(moveAvatar);
+        }
+        
+        // Start animation loop
+        requestAnimationFrame(moveAvatar);
     }
     
     function clearDisplay() {
@@ -259,13 +389,13 @@ document.addEventListener('DOMContentLoaded', function() {
         regionName.textContent = 'Not connected';
         regionPosition.textContent = 'Position: 0, 0, 0';
         
-        // Reset avatar position
-        avatar.style.left = '50%';
-        avatar.style.bottom = '40%';
-        
         // Reset minimap marker
-        avatarMarker.style.left = '50%';
-        avatarMarker.style.top = '50%';
+        updateMiniMapMarker(128, 128);
+        
+        // Reset 3D avatar position if available
+        if (avatarManager) {
+            avatarManager.setPosition(0, 0, 0);
+        }
     }
     
     // Initialize with idle status

@@ -3,74 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KitelyView Web Demo</title>
+    <title>KitelyView - Web Demo</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.4.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 </head>
 <body>
+    <header>
+        <h1>KitelyView</h1>
+        <p>A cross-platform OpenSimulator viewer for Kitely</p>
+    </header>
+
     <div class="container">
-        <header>
-            <h1>KitelyView</h1>
-            <p>A cross-platform OpenSimulator viewer for connecting to the Kitely grid</p>
-        </header>
-        
-        <div class="grid-container">
-            <section class="world-view">
-                <h2>World View</h2>
-                <div class="region-display">
-                    <div id="region-name">Not connected</div>
-                    <div id="region-position">Position: 0, 0, 0</div>
-                </div>
-                <div class="scene-container" id="scene-container">
-                    <div class="avatar" id="avatar">
-                        <div class="avatar-name">Test User</div>
+        <div id="app-container">
+            <div id="main-view">
+                <!-- 3D View -->
+                <div id="world-view-container">
+                    <div id="3d-scene"></div>
+                    <div id="scene-overlay">
+                        <div id="status-indicator" class="status-idle">Idle</div>
                     </div>
-                    <div class="ground"></div>
-                </div>
-            </section>
-            
-            <section class="user-info">
-                <h2>User Information</h2>
-                <div id="login-status">Not logged in</div>
-                <div id="user-details">
-                    <div id="user-name"></div>
-                    <div id="user-id"></div>
-                </div>
-                <div class="action-panel">
-                    <button id="start-button">Start Simulation</button>
-                    <div id="status-indicator" class="status-idle">Idle</div>
-                </div>
-            </section>
-            
-            <section class="chat-panel">
-                <h2>Chat</h2>
-                <div id="chat-messages" class="chat-container"></div>
-                <div class="chat-input">
-                    <input type="text" id="chat-text" placeholder="Type a message..." disabled>
-                    <button id="send-button" disabled>Send</button>
-                </div>
-            </section>
-            
-            <section class="log-panel">
-                <h2>System Log</h2>
-                <div id="system-log" class="log-container"></div>
-            </section>
-            
-            <section class="mini-map">
-                <h2>Mini Map</h2>
-                <div class="map-container">
-                    <div class="map-grid">
-                        <div class="map-marker" id="avatar-marker"></div>
+                    <div id="controls-overlay">
+                        <div id="view-controls">
+                            <button id="move-forward" title="Move Forward">▲</button>
+                            <button id="move-left" title="Move Left">◄</button>
+                            <button id="move-right" title="Move Right">►</button>
+                            <button id="move-backward" title="Move Backward">▼</button>
+                            <button id="move-up" title="Fly Up">⇧</button>
+                            <button id="move-down" title="Fly Down">⇩</button>
+                        </div>
                     </div>
                 </div>
-            </section>
+
+                <!-- Bottom Panels -->
+                <div id="bottom-panels">
+                    <!-- Chat Panel -->
+                    <div id="chat-panel" class="panel">
+                        <h2>Chat</h2>
+                        <div id="chat-messages" class="chat-container"></div>
+                        <div class="chat-input">
+                            <input type="text" id="chat-text" placeholder="Type a message...">
+                            <button id="send-button">Send</button>
+                        </div>
+                    </div>
+
+                    <!-- Log Panel -->
+                    <div id="log-panel" class="panel">
+                        <h2>System Log</h2>
+                        <div id="system-log" class="log-container"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div id="sidebar">
+                <!-- Login Status -->
+                <div id="user-panel" class="panel">
+                    <h2>User Information</h2>
+                    <div id="login-status">Not logged in</div>
+                    <div id="user-details">
+                        <div id="user-name"></div>
+                        <div id="user-id"></div>
+                    </div>
+                    <div class="region-display">
+                        <span id="region-name">Not connected</span>
+                        <span id="region-position">Position: 0, 0, 0</span>
+                    </div>
+                    <div class="action-panel">
+                        <button id="start-button">Start Simulation</button>
+                    </div>
+                </div>
+
+                <!-- Mini Map -->
+                <div id="mini-map-panel" class="panel">
+                    <h2>Mini Map</h2>
+                    <div class="map-container">
+                        <div class="map-grid">
+                            <div id="avatar-marker" class="map-marker"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Panels -->
+                <div id="tab-container" class="panel">
+                    <div class="tab-header">
+                        <button class="tab-button active" data-tab="inventory">Inventory</button>
+                        <button class="tab-button" data-tab="appearance">Appearance</button>
+                        <button class="tab-button" data-tab="build">Build</button>
+                    </div>
+                    
+                    <!-- Inventory Panel -->
+                    <div id="inventory-tab" class="tab-content active">
+                        <div class="inventory-toolbar">
+                            <button id="create-folder">New Folder</button>
+                            <select id="folder-dropdown">
+                                <option value="root">My Inventory</option>
+                            </select>
+                        </div>
+                        <div id="inventory-items" class="inventory-container">
+                            <!-- Inventory items will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <!-- Appearance Panel -->
+                    <div id="appearance-tab" class="tab-content">
+                        <h3>Avatar Appearance</h3>
+                        <div class="appearance-section">
+                            <h4>Body</h4>
+                            <div class="appearance-controls">
+                                <label>Height:
+                                    <input type="range" id="avatar-height" min="0.5" max="2.0" step="0.05" value="1.0">
+                                </label>
+                                <label>Body Shape:
+                                    <select id="body-shape">
+                                        <option value="athletic">Athletic</option>
+                                        <option value="slim">Slim</option>
+                                        <option value="heavy">Heavy</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="appearance-section">
+                            <h4>Skin</h4>
+                            <div class="appearance-controls">
+                                <label>Skin Tone:
+                                    <input type="color" id="skin-color" value="#f2d2bd">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="appearance-section">
+                            <h4>Hair</h4>
+                            <div class="appearance-controls">
+                                <label>Hair Style:
+                                    <select id="hair-style">
+                                        <option value="short">Short</option>
+                                        <option value="ponytail">Ponytail</option>
+                                        <option value="long">Long</option>
+                                    </select>
+                                </label>
+                                <label>Hair Color:
+                                    <input type="color" id="hair-color" value="#523b22">
+                                </label>
+                            </div>
+                        </div>
+                        <div class="appearance-section">
+                            <h4>Clothing</h4>
+                            <div class="appearance-controls">
+                                <label>Outfit Style:
+                                    <select id="outfit-style">
+                                        <option value="casual">Casual</option>
+                                        <option value="formal">Formal</option>
+                                        <option value="fantasy">Fantasy</option>
+                                    </select>
+                                </label>
+                                <label>Primary Color:
+                                    <input type="color" id="outfit-primary-color" value="#3f51b5">
+                                </label>
+                                <label>Secondary Color:
+                                    <input type="color" id="outfit-secondary-color" value="#f44336">
+                                </label>
+                            </div>
+                        </div>
+                        <button id="apply-appearance">Apply Changes</button>
+                    </div>
+                    
+                    <!-- Building Panel -->
+                    <div id="build-tab" class="tab-content">
+                        <h3>Create Objects</h3>
+                        <div class="build-section">
+                            <h4>Object Type</h4>
+                            <div class="build-controls">
+                                <label>
+                                    <input type="radio" name="prim-type" value="box" checked>
+                                    Box
+                                </label>
+                                <label>
+                                    <input type="radio" name="prim-type" value="sphere">
+                                    Sphere
+                                </label>
+                                <label>
+                                    <input type="radio" name="prim-type" value="cylinder">
+                                    Cylinder
+                                </label>
+                                <label>
+                                    <input type="radio" name="prim-type" value="prism">
+                                    Prism
+                                </label>
+                                <label>
+                                    <input type="radio" name="prim-type" value="torus">
+                                    Torus
+                                </label>
+                            </div>
+                        </div>
+                        <div class="build-section">
+                            <h4>Object Properties</h4>
+                            <div class="build-controls">
+                                <label>Size:
+                                    <input type="range" id="object-size" min="0.1" max="10.0" step="0.1" value="1.0">
+                                </label>
+                                <label>Color:
+                                    <input type="color" id="object-color" value="#f44336">
+                                </label>
+                                <label>Transparency:
+                                    <input type="range" id="object-transparency" min="0" max="1" step="0.05" value="0">
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="object-physical">
+                                    Physical
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="object-phantom">
+                                    Phantom
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="object-temporary">
+                                    Temporary
+                                </label>
+                            </div>
+                        </div>
+                        <button id="create-object">Create Object</button>
+                        <button id="edit-object" disabled>Edit Selected</button>
+                        <button id="delete-object" disabled>Delete Selected</button>
+                    </div>
+                </div>
+            </div>
         </div>
-        
-        <footer>
-            <p>KitelyView Web Demo - For demonstration purposes only</p>
-        </footer>
     </div>
-    
+
+    <footer>
+        <p>KitelyView - A cross-platform OpenSimulator viewer for Kitely by our team</p>
+    </footer>
+
+    <!-- Application Scripts -->
+    <script src="{{ url_for('static', filename='js/three/scene.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/three/avatar.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/three/terrain.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/three/object.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui/inventory.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui/appearance.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui/building.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui/tabs.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

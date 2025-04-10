@@ -70,27 +70,101 @@ footer {
     background-color: white;
 }
 
-/* Main layout */
+/* Main layout - Firestorm-inspired */
 #app-container {
-    display: flex;
+    display: grid;
     height: 100%;
-    gap: 20px;
+    grid-template-columns: minmax(250px, 1fr) 5fr minmax(250px, 1fr);
+    grid-template-rows: 40px 1fr 200px;
+    grid-template-areas:
+        "toolbar toolbar toolbar"
+        "left-panel main-view right-panel"
+        "chat-area chat-area chat-area";
+    gap: 2px;
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+#toolbar {
+    grid-area: toolbar;
+    background-color: var(--panel-bg);
+    display: flex;
+    align-items: center;
+    padding: 0 10px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    z-index: 100;
 }
 
 #main-view {
-    flex: 3;
+    grid-area: main-view;
     display: flex;
     flex-direction: column;
     height: 100%;
+    position: relative;
+    overflow: hidden;
 }
 
-#sidebar {
-    flex: 1;
+#left-panel {
+    grid-area: left-panel;
     display: flex;
     flex-direction: column;
-    gap: 20px;
     overflow-y: auto;
-    max-width: 350px;
+    background-color: var(--panel-bg);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+#right-panel {
+    grid-area: right-panel;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background-color: var(--panel-bg);
+    border-left: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+#chat-area {
+    grid-area: chat-area;
+    display: flex;
+    background-color: var(--panel-bg);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 10px;
+}
+
+/* Panel toggle buttons */
+.panel-toggle {
+    position: absolute;
+    width: 16px;
+    height: 40px;
+    background-color: rgba(0, 0, 0, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    font-size: 12px;
+}
+
+#left-panel-toggle {
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 0 4px 4px 0;
+}
+
+#right-panel-toggle {
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    border-radius: 4px 0 0 4px;
+}
+
+.collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+    margin: 0;
+    border: none !important;
 }
 
 /* Panel styling */

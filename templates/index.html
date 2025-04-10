@@ -18,13 +18,46 @@
 
     <div class="container">
         <div id="app-container">
+            <!-- Top Toolbar (Firestorm Style) -->
+            <div id="toolbar">
+                <div id="status-indicator" class="status-idle">Idle</div>
+                <button id="start-button">Start Simulation</button>
+                <div id="login-status">Not logged in</div>
+            </div>
+
+            <!-- Left Panel (Firestorm Style) -->
+            <div id="left-panel">
+                <!-- User Info Panel -->
+                <div id="user-panel" class="panel">
+                    <h2>User Information</h2>
+                    <div id="user-details">
+                        <div id="user-name"></div>
+                        <div id="user-id"></div>
+                    </div>
+                    <div class="region-display">
+                        <span id="region-name">Not connected</span>
+                        <span id="region-position">Position: 0, 0, 0</span>
+                    </div>
+                </div>
+
+                <!-- Mini Map Panel -->
+                <div id="mini-map-panel" class="panel">
+                    <h2>Mini Map</h2>
+                    <div class="map-container">
+                        <div class="map-grid">
+                            <div id="avatar-marker" class="map-marker"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Left Panel Toggle Button -->
+                <div id="left-panel-toggle" class="panel-toggle">◄</div>
+            </div>
+
+            <!-- Main 3D View (Firestorm Style) -->
             <div id="main-view">
-                <!-- 3D View -->
                 <div id="world-view-container">
                     <div id="3d-scene"></div>
-                    <div id="scene-overlay">
-                        <div id="status-indicator" class="status-idle">Idle</div>
-                    </div>
                     <div id="controls-overlay">
                         <div id="view-controls">
                             <button id="move-forward" title="Move Forward">▲</button>
@@ -36,56 +69,10 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Bottom Panels -->
-                <div id="bottom-panels">
-                    <!-- Chat Panel -->
-                    <div id="chat-panel" class="panel">
-                        <h2>Chat</h2>
-                        <div id="chat-messages" class="chat-container"></div>
-                        <div class="chat-input">
-                            <input type="text" id="chat-text" placeholder="Type a message...">
-                            <button id="send-button">Send</button>
-                        </div>
-                    </div>
-
-                    <!-- Log Panel -->
-                    <div id="log-panel" class="panel">
-                        <h2>System Log</h2>
-                        <div id="system-log" class="log-container"></div>
-                    </div>
-                </div>
             </div>
 
-            <!-- Sidebar -->
-            <div id="sidebar">
-                <!-- Login Status -->
-                <div id="user-panel" class="panel">
-                    <h2>User Information</h2>
-                    <div id="login-status">Not logged in</div>
-                    <div id="user-details">
-                        <div id="user-name"></div>
-                        <div id="user-id"></div>
-                    </div>
-                    <div class="region-display">
-                        <span id="region-name">Not connected</span>
-                        <span id="region-position">Position: 0, 0, 0</span>
-                    </div>
-                    <div class="action-panel">
-                        <button id="start-button">Start Simulation</button>
-                    </div>
-                </div>
-
-                <!-- Mini Map -->
-                <div id="mini-map-panel" class="panel">
-                    <h2>Mini Map</h2>
-                    <div class="map-container">
-                        <div class="map-grid">
-                            <div id="avatar-marker" class="map-marker"></div>
-                        </div>
-                    </div>
-                </div>
-
+            <!-- Right Panel (Firestorm Style) -->
+            <div id="right-panel">
                 <!-- Tab Panels -->
                 <div id="tab-container" class="panel">
                     <div class="tab-header">
@@ -226,6 +213,27 @@
                         <button id="create-object">Create Object</button>
                         <button id="edit-object" disabled>Edit Selected</button>
                         <button id="delete-object" disabled>Delete Selected</button>
+                    </div>
+                </div>
+
+                <!-- Log Panel -->
+                <div id="log-panel" class="panel">
+                    <h2>System Log</h2>
+                    <div id="system-log" class="log-container"></div>
+                </div>
+
+                <!-- Right Panel Toggle Button -->
+                <div id="right-panel-toggle" class="panel-toggle">►</div>
+            </div>
+
+            <!-- Bottom Chat Area (Firestorm Style) -->
+            <div id="chat-area">
+                <div id="chat-panel" class="panel">
+                    <h2>Chat</h2>
+                    <div id="chat-messages" class="chat-container"></div>
+                    <div class="chat-input">
+                        <input type="text" id="chat-text" placeholder="Type a message...">
+                        <button id="send-button">Send</button>
                     </div>
                 </div>
             </div>

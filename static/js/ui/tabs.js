@@ -1,57 +1,114 @@
 /**
  * KitelyView - UI Manager
- * Handles tab switching and panel toggles for Firestorm-like layout
+ * Handles tab switching and panel toggles for slide-out panels
  */
 
 class UIManager {
     constructor() {
+        // Tab elements
         this.tabs = document.querySelectorAll('.tab-button');
         this.tabContents = document.querySelectorAll('.tab-content');
+        
+        // Panel elements
         this.leftPanel = document.getElementById('left-panel');
         this.rightPanel = document.getElementById('right-panel');
-        this.leftPanelToggle = document.getElementById('left-panel-toggle');
-        this.rightPanelToggle = document.getElementById('right-panel-toggle');
+        this.chatArea = document.getElementById('chat-area');
+        
+        // Button elements - toolbar
+        this.toggleLeftBtn = document.getElementById('toggle-left-button');
+        this.toggleRightBtn = document.getElementById('toggle-right-button');
+        this.toggleChatBtn = document.getElementById('toggle-chat-button');
+        
+        // Button elements - HUD
+        this.leftPanelBtn = document.getElementById('left-panel-button');
+        this.rightPanelBtn = document.getElementById('right-panel-button');
+        this.chatPanelBtn = document.getElementById('chat-panel-button');
+        
+        // Initialize panel states
+        this.leftPanelVisible = false;
+        this.rightPanelVisible = false;
+        this.chatAreaVisible = false;
         
         this.initTabEvents();
         this.initPanelToggleEvents();
-        
-        // Store panel states
-        this.leftPanelCollapsed = false;
-        this.rightPanelCollapsed = false;
+        this.initCloseEvents();
     }
     
     initTabEvents() {
         // Add click event to each tab button
         this.tabs.forEach(tab => {
             tab.addEventListener('click', (event) => {
-                this.switchTab(event.target.getAttribute('data-tab'));
+                const tabName = event.currentTarget.getAttribute('data-tab');
+                if (tabName) {
+                    this.switchTab(tabName);
+                }
             });
         });
     }
     
     initPanelToggleEvents() {
-        // Left panel toggle
-        this.leftPanelToggle.addEventListener('click', () => {
-            this.toggleLeftPanel();
-        });
+        // Toolbar buttons
+        if (this.toggleLeftBtn) {
+            this.toggleLeftBtn.addEventListener('click', () => this.toggleLeftPanel());
+        }
         
-        // Right panel toggle
-        this.rightPanelToggle.addEventListener('click', () => {
-            this.toggleRightPanel();
-        });
+        if (this.toggleRightBtn) {
+            this.toggleRightBtn.addEventListener('click', () => this.toggleRightPanel());
+        }
+        
+        if (this.toggleChatBtn) {
+            this.toggleChatBtn.addEventListener('click', () => this.toggleChatArea());
+        }
+        
+        // HUD buttons
+        if (this.leftPanelBtn) {
+            this.leftPanelBtn.addEventListener('click', () => this.toggleLeftPanel());
+        }
+        
+        if (this.rightPanelBtn) {
+            this.rightPanelBtn.addEventListener('click', () => this.toggleRightPanel());
+        }
+        
+        if (this.chatPanelBtn) {
+            this.chatPanelBtn.addEventListener('click', () => this.toggleChatArea());
+        }
         
         // Add keyboard shortcuts
         document.addEventListener('keydown', (event) => {
-            // Ctrl+Alt+[ to toggle left panel
-            if (event.ctrlKey && event.altKey && event.key === '[') {
+            // Alt+1 for left panel
+            if (event.altKey && event.key === '1') {
                 this.toggleLeftPanel();
             }
             
-            // Ctrl+Alt+] to toggle right panel
-            if (event.ctrlKey && event.altKey && event.key === ']') {
+            // Alt+2 for right panel
+            if (event.altKey && event.key === '2') {
                 this.toggleRightPanel();
             }
+            
+            // Alt+3 for chat panel
+            if (event.altKey && event.key === '3') {
+                this.toggleChatArea();
+            }
+            
+            // Escape to close all panels
+            if (event.key === 'Escape') {
+                this.closeAllPanels();
+            }
         });
+    }
+    
+    initCloseEvents() {
+        // Close panels when clicking on the main view (if not clicking on a control)
+        const mainView = document.getElementById('main-view');
+        if (mainView) {
+            mainView.addEventListener('click', (event) => {
+                // Don't close if clicking on a control or if the click originated from a panel
+                if (!event.target.closest('#controls-overlay') && 
+                    !event.target.closest('.hud-button')) {
+                    this.closeAllPanels();
+                }
+            });
+        }
     }
     
     switchTab(tabName) {
@@ -65,36 +122,70 @@ class UIManager {
         });
         
         // Add active class to selected tab and content
-        document.querySelector(`.tab-button[data-tab="${tabName}"]`).classList.add('active');
-        document.getElementById(`${tabName}-tab`).classList.add('active');
+        const selectedTab = document.querySelector(`.tab-button[data-tab="${tabName}"]`);
+        const selectedContent = document.getElementById(`${tabName}-tab`);
+        
+        if (selectedTab) {
+            selectedTab.classList.add('active');
+        }
+        
+        if (selectedContent) {
+            selectedContent.classList.add('active');
+        }
     }
     
     toggleLeftPanel() {
-        this.leftPanelCollapsed = !this.leftPanelCollapsed;
+        this.leftPanelVisible = !this.leftPanelVisible;
         
-        if (this.leftPanelCollapsed) {
-            this.leftPanel.classList.add('collapsed');
-            this.leftPanelToggle.textContent = '►';
-            this.leftPanelToggle.title = 'Show Left Panel';
+        if (this.leftPanelVisible) {
+            this.leftPanel.classList.add('visible');
+            // Close other panels to prevent overlap
+            this.rightPanel.classList.remove('visible');
+            this.chatArea.classList.remove('visible');
+            this.rightPanelVisible = false;
+            this.chatAreaVisible = false;
         } else {
-            this.leftPanel.classList.remove('collapsed');
-            this.leftPanelToggle.textContent = '◄';
-            this.leftPanelToggle.title = 'Hide Left Panel';
+            this.leftPanel.classList.remove('visible');
         }
     }
     
     toggleRightPanel() {
-        this.rightPanelCollapsed = !this.rightPanelCollapsed;
+        this.rightPanelVisible = !this.rightPanelVisible;
         
-        if (this.rightPanelCollapsed) {
-            this.rightPanel.classList.add('collapsed');
-            this.rightPanelToggle.textContent = '◄';
-            this.rightPanelToggle.title = 'Show Right Panel';
+        if (this.rightPanelVisible) {
+            this.rightPanel.classList.add('visible');
+            // Close other panels to prevent overlap
+            this.leftPanel.classList.remove('visible');
+            this.chatArea.classList.remove('visible');
+            this.leftPanelVisible = false;
+            this.chatAreaVisible = false;
         } else {
-            this.rightPanel.classList.remove('collapsed');
-            this.rightPanelToggle.textContent = '►';
-            this.rightPanelToggle.title = 'Hide Right Panel';
+            this.rightPanel.classList.remove('visible');
         }
+    }
+    
+    toggleChatArea() {
+        this.chatAreaVisible = !this.chatAreaVisible;
+        
+        if (this.chatAreaVisible) {
+            this.chatArea.classList.add('visible');
+            // Close other panels to prevent overlap
+            this.leftPanel.classList.remove('visible');
+            this.rightPanel.classList.remove('visible');
+            this.leftPanelVisible = false;
+            this.rightPanelVisible = false;
+        } else {
+            this.chatArea.classList.remove('visible');
+        }
+    }
+    
+    closeAllPanels() {
+        this.leftPanel.classList.remove('visible');
+        this.rightPanel.classList.remove('visible');
+        this.chatArea.classList.remove('visible');
+        this.leftPanelVisible = false;
+        this.rightPanelVisible = false;
+        this.chatAreaVisible = false;
     }
 }
 

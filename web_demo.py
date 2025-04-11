@@ -475,4 +475,5 @@ def create_default_directories():
 
 if __name__ == '__main__':
     create_default_directories()
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+    # Use Replit-friendly settings
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True, log_output=True)

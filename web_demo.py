@@ -390,24 +390,41 @@ def api_login():
     # Get login details from request
     data = request.json
     
-    # In demo mode, simulate login success
-    logging.info("API: Manual login to Kitely grid requested...")
+    # Extract credentials
+    first_name = data.get('first_name', 'Test')
+    last_name = data.get('last_name', 'User')
+    password = data.get('password', '')
+    grid = data.get('grid', 'kitely')
+    
+    # Log login attempt with user info
+    logging.info(f"API: Manual login to {grid.capitalize()} grid requested for user {first_name} {last_name}...")
+    
+    # Validate password (in a real system this would be a proper authentication)
+    # For demo purposes, we'll accept any password with at least 4 characters
+    if len(password) < 4:
+        return jsonify({
+            'success': False,
+            'message': 'Password must be at least 4 characters long'
+        })
     
     # Add login event
     simulation_events.put({
         'type': 'login',
-        'message': 'Login successful',
+        'message': f'Login successful for {first_name} {last_name}',
         'timestamp': time.time(),
         'level': 'INFO'
     })
+    
+    # Create user ID from name
+    user_id = f"user-{first_name.lower()}-{last_name.lower()}-{int(time.time())}"
     
     # Update simulation state to indicate login
     simulation_state["status"] = 'logged_in'
     simulation_state["logged_in"] = True
     simulation_state["user"] = {
-        'id': 'user-1234-5678',
-        'name': 'Test User',
-        'grid': 'Kitely'
+        'id': user_id,
+        'name': f"{first_name} {last_name}",
+        'grid': grid.capitalize()
     }
     
     # Send status update via socket

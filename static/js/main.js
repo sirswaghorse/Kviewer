@@ -52,6 +52,26 @@ document.addEventListener('DOMContentLoaded', function() {
     loginButton.addEventListener('click', handleLogin);
     logoutButton.addEventListener('click', handleLogout);
     
+    // Login modal event listeners
+    document.getElementById('login-submit').addEventListener('click', submitLogin);
+    document.getElementById('login-cancel').addEventListener('click', closeLoginModal);
+    document.querySelector('.close-modal').addEventListener('click', closeLoginModal);
+    
+    // Close modal when clicking outside of it
+    window.addEventListener('click', function(event) {
+        const modal = document.getElementById('login-modal');
+        if (event.target === modal) {
+            closeLoginModal();
+        }
+    });
+    
+    // Allow pressing Enter key in password field to submit login
+    document.getElementById('password').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            submitLogin();
+        }
+    });
+    
     // Movement control listeners
     document.getElementById('move-forward').addEventListener('mousedown', () => movementControls.forward = true);
     document.getElementById('move-forward').addEventListener('mouseup', () => movementControls.forward = false);
@@ -425,9 +445,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function handleLogin() {
+        // Show login modal
+        const loginModal = document.getElementById('login-modal');
+        loginModal.style.display = 'block';
+    }
+    
+    function submitLogin() {
+        // Get login form values
+        const firstName = document.getElementById('first-name').value.trim();
+        const lastName = document.getElementById('last-name').value.trim();
+        const password = document.getElementById('password').value.trim();
+        
+        // Validate inputs
+        if (!firstName || !lastName || !password) {
+            addLogEntry('Please fill in all login fields', 'error');
+            return;
+        }
+        
+        // Hide modal
+        const loginModal = document.getElementById('login-modal');
+        loginModal.style.display = 'none';
+        
         // Update status to logging in
         updateStatus('logging_in');
-        addLogEntry('Logging in to Kitely...', 'info');
+        addLogEntry(`Logging in to Kitely as ${firstName} ${lastName}...`, 'info');
         
         // In the demo, we'll simulate a login request
         fetch('/api/login', {
@@ -436,9 +477,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                first_name: 'Test',
-                last_name: 'User',
-                password: 'password123',
+                first_name: firstName,
+                last_name: lastName,
+                password: password,
                 grid: 'kitely'
             })
         })
@@ -453,13 +494,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.user) {
                     userName.textContent = `Name: ${data.user.name}`;
                     userId.textContent = `ID: ${data.user.id}`;
+                } else {
+                    // If no user data returned, use the input names
+                    userName.textContent = `Name: ${firstName} ${lastName}`;
+                    userId.textContent = `ID: user-${Date.now()}`;
                 }
                 
                 // Update login/logout buttons
                 updateLoginButtons(true);
                 
                 // Log success
-                addLogEntry('Successfully logged in to Kitely', 'info');
+                addLogEntry(`Successfully logged in to Kitely as ${firstName} ${lastName}`, 'info');
+                
+                // Clear form fields
+                document.getElementById('first-name').value = '';
+                document.getElementById('last-name').value = '';
+                document.getElementById('password').value = '';
             } else {
                 // Show error message
                 updateStatus('error');
@@ -477,6 +527,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // Keep login button visible
             updateLoginButtons(false);
         });
+    }
+    
+    function closeLoginModal() {
+        // Hide login modal
+        const loginModal = document.getElementById('login-modal');
+        loginModal.style.display = 'none';
+        
+        // Reset form fields
+        document.getElementById('first-name').value = '';
+        document.getElementById('last-name').value = '';
+        document.getElementById('password').value = '';
     }
     
     function handleLogout() {

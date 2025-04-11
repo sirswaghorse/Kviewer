@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const startButton = document.getElementById('start-button');
     const statusIndicator = document.getElementById('status-indicator');
     const loginStatus = document.getElementById('login-status');
+    const loginButton = document.getElementById('login-button');
+    const logoutButton = document.getElementById('logout-button');
     const userName = document.getElementById('user-name');
     const userId = document.getElementById('user-id');
     const regionName = document.getElementById('region-name');
@@ -47,6 +49,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event listeners
     startButton.addEventListener('click', startSimulation);
+    loginButton.addEventListener('click', handleLogin);
+    logoutButton.addEventListener('click', handleLogout);
     
     // Movement control listeners
     document.getElementById('move-forward').addEventListener('mousedown', () => movementControls.forward = true);
@@ -157,10 +161,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         loginStatus.textContent = 'Logged in';
                         userName.textContent = `Name: ${data.user.name}`;
                         userId.textContent = `ID: ${data.user.id}`;
+                        updateLoginButtons(true);
                     } else {
                         loginStatus.textContent = data.status === 'completed' ? 'Logged out' : 'Not logged in';
                         userName.textContent = '';
                         userId.textContent = '';
+                        updateLoginButtons(false);
                     }
                     
                     // Update region info if available
@@ -204,10 +210,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             case 'login':
                 loginStatus.textContent = 'Logged in';
+                updateLoginButtons(true);
                 addLogEntry('Login successful', 'info');
                 break;
             case 'logout':
                 loginStatus.textContent = 'Logged out';
+                updateLoginButtons(false);
                 addLogEntry('Logged out', 'info');
                 break;
         }
@@ -233,21 +241,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 break;
             case 'logging_in':
                 statusIndicator.textContent = 'Logging in...';
+                // Disable login button during login
+                loginButton.disabled = true;
                 break;
             case 'logged_in':
                 statusIndicator.textContent = 'Logged in';
+                // Update login buttons
+                updateLoginButtons(true);
                 break;
             case 'in_world':
                 statusIndicator.textContent = 'In World';
+                // Update login buttons
+                updateLoginButtons(true);
                 break;
             case 'logging_out':
                 statusIndicator.textContent = 'Logging out...';
+                // Disable logout button during logout
+                logoutButton.disabled = true;
                 break;
             case 'completed':
                 statusIndicator.textContent = 'Completed';
+                // Reset buttons
+                loginButton.disabled = false;
+                logoutButton.disabled = false;
+                updateLoginButtons(false);
                 break;
             case 'error':
                 statusIndicator.textContent = 'Error';
+                // Reset buttons
+                loginButton.disabled = false;
+                logoutButton.disabled = false;
                 break;
             case 'running_simulation_1':
                 statusIndicator.textContent = 'Running (1/3)';
@@ -396,8 +419,117 @@ document.addEventListener('DOMContentLoaded', function() {
         if (avatarManager) {
             avatarManager.setPosition(0, 0, 0);
         }
+        
+        // Reset login/logout buttons
+        updateLoginButtons(false);
+    }
+    
+    function handleLogin() {
+        // Update status to logging in
+        updateStatus('logging_in');
+        addLogEntry('Logging in to Kitely...', 'info');
+        
+        // In the demo, we'll simulate a login request
+        fetch('/api/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                first_name: 'Test',
+                last_name: 'User',
+                password: 'password123',
+                grid: 'kitely'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update login status
+                updateStatus('logged_in');
+                loginStatus.textContent = 'Logged in';
+                
+                // Update user details
+                if (data.user) {
+                    userName.textContent = `Name: ${data.user.name}`;
+                    userId.textContent = `ID: ${data.user.id}`;
+                }
+                
+                // Update login/logout buttons
+                updateLoginButtons(true);
+                
+                // Log success
+                addLogEntry('Successfully logged in to Kitely', 'info');
+            } else {
+                // Show error message
+                updateStatus('error');
+                addLogEntry(`Login failed: ${data.message || 'Unknown error'}`, 'error');
+                
+                // Keep login button visible
+                updateLoginButtons(false);
+            }
+        })
+        .catch(error => {
+            console.error('Error during login:', error);
+            addLogEntry(`Login error: ${error.message}`, 'error');
+            updateStatus('error');
+            
+            // Keep login button visible
+            updateLoginButtons(false);
+        });
+    }
+    
+    function handleLogout() {
+        // Update status to logging out
+        updateStatus('logging_out');
+        addLogEntry('Logging out from Kitely...', 'info');
+        
+        // In the demo, we'll simulate a logout request
+        fetch('/api/logout', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update login status
+                updateStatus('completed');
+                loginStatus.textContent = 'Logged out';
+                
+                // Clear user details
+                userName.textContent = '';
+                userId.textContent = '';
+                
+                // Update login/logout buttons
+                updateLoginButtons(false);
+                
+                // Log success
+                addLogEntry('Successfully logged out from Kitely', 'info');
+            } else {
+                // Show error message
+                updateStatus('error');
+                addLogEntry(`Logout failed: ${data.message || 'Unknown error'}`, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error during logout:', error);
+            addLogEntry(`Logout error: ${error.message}`, 'error');
+            updateStatus('error');
+        });
+    }
+    
+    function updateLoginButtons(isLoggedIn) {
+        if (isLoggedIn) {
+            // Show logout button, hide login button
+            loginButton.style.display = 'none';
+            logoutButton.style.display = 'block';
+        } else {
+            // Show login button, hide logout button
+            loginButton.style.display = 'block';
+            logoutButton.style.display = 'none';
+        }
     }
     
     // Initialize with idle status
     updateStatus('idle');
+    updateLoginButtons(false);
 });

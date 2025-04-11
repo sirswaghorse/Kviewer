@@ -382,6 +382,72 @@ def start_simulation():
     
     return jsonify({"status": "started"})
 
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    """API endpoint for manual login"""
+    global simulation_state
+    
+    # Get login details from request
+    data = request.json
+    
+    # In demo mode, simulate login success
+    logging.info("API: Manual login to Kitely grid requested...")
+    
+    # Add login event
+    simulation_events.put({
+        'type': 'login',
+        'message': 'Login successful',
+        'timestamp': time.time(),
+        'level': 'INFO'
+    })
+    
+    # Update simulation state to indicate login
+    simulation_state["status"] = 'logged_in'
+    simulation_state["logged_in"] = True
+    simulation_state["user"] = {
+        'id': 'user-1234-5678',
+        'name': 'Test User',
+        'grid': 'Kitely'
+    }
+    
+    # Send status update via socket
+    socketio.emit('status_update', {"status": "logged_in"})
+    
+    # Return success
+    return jsonify({
+        'success': True,
+        'user': simulation_state["user"]
+    })
+
+@app.route('/api/logout', methods=['POST'])
+def api_logout():
+    """API endpoint for manual logout"""
+    global simulation_state
+    
+    # In demo mode, simulate logout success
+    logging.info("API: Manual logout from Kitely grid requested...")
+    
+    # Add logout event
+    simulation_events.put({
+        'type': 'logout',
+        'message': 'Logged out',
+        'timestamp': time.time(),
+        'level': 'INFO'
+    })
+    
+    # Update simulation state to indicate logout
+    simulation_state["status"] = 'completed'
+    simulation_state["logged_in"] = False
+    simulation_state["user"] = None
+    
+    # Send status update via socket
+    socketio.emit('status_update', {"status": "completed"})
+    
+    # Return success
+    return jsonify({
+        'success': True
+    })
+
 @socketio.on('connect')
 def handle_connect():
     """Handle client connection"""

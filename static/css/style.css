@@ -116,6 +116,18 @@ footer {
 #toolbar button, #toolbar div {
     margin: 0 5px;
     color: var(--text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#login-status {
+    min-width: 120px;
+    max-width: 150px;
+    text-align: center;
+    padding: 5px 8px;
+    border-radius: 4px;
+    background-color: rgba(30, 30, 45, 0.7);
 }
 
 /* Slide-out panels */
@@ -452,16 +464,6 @@ footer {
 }
 
 /* User Panel */
-#login-status {
-    padding: 10px;
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 4px;
-    margin-bottom: 15px;
-    text-align: center;
-    font-weight: bold;
-    color: var(--text-color);
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
-}
 
 #user-details {
     margin-bottom: 15px;

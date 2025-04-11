@@ -1,93 +1,64 @@
 # KitelyView
 
-KitelyView is a cross-platform OpenSimulator viewer application designed specifically for connecting to the Kitely grid. It provides a streamlined interface for exploring virtual worlds, chatting with other users, managing inventory, and interacting with the 3D environment.
+A cross-platform OpenSimulator viewer designed for intuitive and engaging virtual world exploration, focusing on user experience and grid interaction, particularly for the Kitely grid.
 
 ## Features
 
-- **Cross-platform compatibility**: Works on Windows, Fedora, and Ubuntu
-- **3D Rendering**: OpenGL-based rendering engine for the virtual world
-- **Network Communication**: Connect to OpenSimulator grids using the standard protocol
-- **User Interface**: Modern, intuitive interface built with PyQt5
-- **Inventory Management**: View and organize your virtual items
-- **Chat System**: Communicate with other users in the virtual world
-- **Avatar Control**: Move and animate your avatar in the world
-- **Object Manipulation**: Create, edit, and interact with virtual objects
+- Python-based application with modern UI/UX design
+- Qt framework for responsive cross-platform interface
+- Web-based interface using Flask, Socket.IO, and Three.js
+- Support for Windows, Fedora, and Ubuntu platforms
+- Advanced OpenSimulator grid connection protocols
+- 3D avatar visualization and customization
+- Inventory management system
+- Object creation and placement tools
+- Chat functionality
+- Immersive 3D scene rendering
 
-## Project Structure
+## Architecture
 
-The project is organized into several modules:
+The application is built with a modular architecture:
 
-- **app/models/**: Data models representing objects in the virtual world
-- **app/network/**: Network communication with OpenSimulator servers
-- **app/renderer/**: 3D rendering using OpenGL
-- **app/ui/**: User interface components
-- **app/utils/**: Utility functions and helpers
-- **app/assets/**: Application resources (icons, shaders, etc.)
+- **UI Layer**: Both PyQt5 desktop interface and web-based interface
+- **Network Layer**: Handles communication with OpenSimulator grids
+- **Renderer**: 3D visualization using OpenGL (desktop) and Three.js (web)
+- **Models**: Data structures for avatars, inventory, objects, etc.
+- **Utils**: Common utilities and helper functions
 
-## Dependencies
+## Requirements
 
-- Python 3.6+
-- PyQt5
-- NumPy
+- Python 3.8+
+- PyQt5 (for desktop version)
+- Flask (for web version)
 - PyOpenGL
-- Pillow (PIL)
-- requests
-- websocket-client
+- Pillow
+- NumPy
+- WebSocket client
 
-## Installation
+## Usage
 
-1. Clone the repository
-2. Install the dependencies:
-   ```
-   pip install pyqt5 numpy pyopengl pillow requests websocket-client
-   ```
-3. Run the application:
-   ```
-   python main.py
-   ```
-
-## Demo Mode
-
-To experience a simplified demonstration of the application functionality:
+### Web Version
 
 ```
-python demo.py
+python web_demo.py
 ```
 
-The demo mode simulates a login to the Kitely grid, teleporting to a region, and sending chat messages without requiring an actual grid connection.
+Access the application at http://localhost:5000
 
-## Configuration
+### Desktop Version
 
-The application uses a configuration file located at `.config/config.json`. For a list of available configuration options, see `app/config.py`.
+```
+python main.py
+```
 
-## How It Works
+## Screenshots
 
-1. **Login**: Connect to the Kitely grid using your credentials
-2. **Region Selection**: Choose a region to visit
-3. **Navigation**: Move your avatar around the virtual world
-4. **Interaction**: Chat with other users, manipulate objects, access your inventory
-
-## Development
-
-The code is structured to allow easy extension and modification. Key components:
-
-- **OpenSimulator Protocol**: Implementation of the network protocol
-- **3D Rendering Engine**: OpenGL-based engine for rendering the virtual world
-- **UI Components**: PyQt5 widgets for the application interface
-
-## Contributing
-
-Contributions are welcome! Areas that could use improvement:
-
-- Additional UI features
-- Performance optimizations
-- Enhanced rendering capabilities
-- More comprehensive support for OpenSimulator features
+*Coming soon*
 
 ## License
 
-This project is open source under the MIT License.
+*TBD*
 
-## Credits
+## Acknowledgements
 
-Developed by the KitelyView Team.
+This project is designed as a third-party viewer for connecting to OpenSimulator-based virtual worlds, with a focus on the Kitely grid.

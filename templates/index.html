@@ -9,82 +9,90 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
-    <header>
-        <h1>KitelyView</h1>
-        <p>A cross-platform OpenSimulator viewer for Kitely</p>
-    </header>
-
     <div class="container">
         <div id="app-container">
-            <!-- Top Toolbar (Firestorm Style) -->
+            <!-- Top toolbar - always visible -->
             <div id="toolbar">
+                <div id="logo">KitelyView</div>
+                
+                <!-- Menu buttons -->
+                <button class="menu-button" id="toggle-left-button"><i class="fas fa-user"></i> User</button>
+                <button class="menu-button" id="toggle-right-button"><i class="fas fa-toolbox"></i> Tools</button>
+                <button class="menu-button" id="toggle-chat-button"><i class="fas fa-comments"></i> Chat</button>
+                <button id="start-button" class="menu-button"><i class="fas fa-play"></i> Start</button>
+                
+                <div class="spacer"></div>
+                
                 <div id="status-indicator" class="status-idle">Idle</div>
-                <button id="start-button">Start Simulation</button>
                 <div id="login-status">Not logged in</div>
+                <div id="coordinates">Region: Unknown (0,0,0)</div>
+                <button class="menu-button" id="settings-button"><i class="fas fa-cog"></i></button>
+                <button class="menu-button" id="help-button"><i class="fas fa-question-circle"></i></button>
             </div>
-
-            <!-- Left Panel (Firestorm Style) -->
+            
+            <!-- Main 3D view - Always visible and takes full screen -->
+            <div id="main-view">
+                <div id="world-view-container">
+                    <div id="3d-scene"></div>
+                    
+                    <div id="controls-overlay">
+                        <div id="view-controls">
+                            <button id="move-forward" title="Move Forward"><i class="fas fa-arrow-up"></i></button>
+                            <button id="move-left" title="Move Left"><i class="fas fa-arrow-left"></i></button>
+                            <button id="move-right" title="Move Right"><i class="fas fa-arrow-right"></i></button>
+                            <button id="move-backward" title="Move Backward"><i class="fas fa-arrow-down"></i></button>
+                            <button id="move-up" title="Fly Up"><i class="fas fa-chevron-up"></i></button>
+                            <button id="move-down" title="Fly Down"><i class="fas fa-chevron-down"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- HUD buttons - Floating over 3D view for quick access -->
+            <button id="left-panel-button" class="hud-button" title="User Panel"><i class="fas fa-user"></i></button>
+            <button id="right-panel-button" class="hud-button" title="Tools Panel"><i class="fas fa-toolbox"></i></button>
+            <button id="chat-panel-button" class="hud-button" title="Chat Panel"><i class="fas fa-comments"></i></button>
+            
+            <!-- Left panel (User info, minimap) - Hidden by default -->
             <div id="left-panel">
-                <!-- User Info Panel -->
-                <div id="user-panel" class="panel">
-                    <h2>User Information</h2>
+                <div class="panel">
+                    <h2>User Panel</h2>
+                    
                     <div id="user-details">
                         <div id="user-name"></div>
                         <div id="user-id"></div>
                     </div>
+                    
                     <div class="region-display">
-                        <span id="region-name">Not connected</span>
-                        <span id="region-position">Position: 0, 0, 0</span>
+                        <div id="region-name">Not connected</div>
+                        <div id="region-position">Position: 0, 0, 0</div>
                     </div>
-                </div>
-
-                <!-- Mini Map Panel -->
-                <div id="mini-map-panel" class="panel">
-                    <h2>Mini Map</h2>
+                    
+                    <h3>Mini Map</h3>
                     <div class="map-container">
                         <div class="map-grid">
                             <div id="avatar-marker" class="map-marker"></div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Left Panel Toggle Button -->
-                <div id="left-panel-toggle" class="panel-toggle">◄</div>
             </div>
-
-            <!-- Main 3D View (Firestorm Style) -->
-            <div id="main-view">
-                <div id="world-view-container">
-                    <div id="3d-scene"></div>
-                    <div id="controls-overlay">
-                        <div id="view-controls">
-                            <button id="move-forward" title="Move Forward">▲</button>
-                            <button id="move-left" title="Move Left">◄</button>
-                            <button id="move-right" title="Move Right">►</button>
-                            <button id="move-backward" title="Move Backward">▼</button>
-                            <button id="move-up" title="Fly Up">⇧</button>
-                            <button id="move-down" title="Fly Down">⇩</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Panel (Firestorm Style) -->
+            
+            <!-- Right panel (Tabbed interface) - Hidden by default -->
             <div id="right-panel">
-                <!-- Tab Panels -->
-                <div id="tab-container" class="panel">
+                <div class="panel">
                     <div class="tab-header">
-                        <button class="tab-button active" data-tab="inventory">Inventory</button>
-                        <button class="tab-button" data-tab="appearance">Appearance</button>
-                        <button class="tab-button" data-tab="build">Build</button>
+                        <button class="tab-button active" data-tab="inventory"><i class="fas fa-box-open"></i> Inventory</button>
+                        <button class="tab-button" data-tab="appearance"><i class="fas fa-user-edit"></i> Appearance</button>
+                        <button class="tab-button" data-tab="build"><i class="fas fa-cube"></i> Build</button>
                     </div>
                     
                     <!-- Inventory Panel -->
                     <div id="inventory-tab" class="tab-content active">
                         <div class="inventory-toolbar">
-                            <button id="create-folder">New Folder</button>
+                            <button id="create-folder"><i class="fas fa-folder-plus"></i> New Folder</button>
                             <select id="folder-dropdown">
                                 <option value="root">My Inventory</option>
                             </select>
@@ -214,22 +222,19 @@
                         <button id="edit-object" disabled>Edit Selected</button>
                         <button id="delete-object" disabled>Delete Selected</button>
                     </div>
-                </div>
 
-                <!-- Log Panel -->
-                <div id="log-panel" class="panel">
-                    <h2>System Log</h2>
-                    <div id="system-log" class="log-container"></div>
+                    <!-- System Log section at the bottom of right panel -->
+                    <div id="log-section">
+                        <h3>System Log</h3>
+                        <div id="system-log" class="log-container"></div>
+                    </div>
                 </div>
-
-                <!-- Right Panel Toggle Button -->
-                <div id="right-panel-toggle" class="panel-toggle">►</div>
             </div>
-
-            <!-- Bottom Chat Area (Firestorm Style) -->
+            
+            <!-- Chat area - Hidden by default -->
             <div id="chat-area">
                 <div id="chat-panel" class="panel">
-                    <h2>Chat</h2>
+                    <h3>Chat</h3>
                     <div id="chat-messages" class="chat-container"></div>
                     <div class="chat-input">
                         <input type="text" id="chat-text" placeholder="Type a message...">
@@ -239,10 +244,6 @@
             </div>
         </div>
     </div>
-
-    <footer>
-        <p>KitelyView - A cross-platform OpenSimulator viewer for Kitely by our team</p>
-    </footer>
 
     <!-- Application Scripts -->
     <script src="{{ url_for('static', filename='js/three/scene.js') }}"></script>

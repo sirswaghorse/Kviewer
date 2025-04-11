@@ -70,101 +70,157 @@ footer {
     background-color: white;
 }
 
-/* Main layout - Firestorm-inspired */
+/* Main layout - Fullscreen 3D view with slidable panels */
 #app-container {
-    display: grid;
+    display: block;
+    position: relative;
     height: 100%;
-    grid-template-columns: minmax(250px, 1fr) 5fr minmax(250px, 1fr);
-    grid-template-rows: 40px 1fr 200px;
-    grid-template-areas:
-        "toolbar toolbar toolbar"
-        "left-panel main-view right-panel"
-        "chat-area chat-area chat-area";
-    gap: 2px;
-    background-color: rgba(0, 0, 0, 0.2);
+    width: 100%;
+    overflow: hidden;
 }
 
+/* Full screen main view */
+#main-view {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: calc(100% - 40px);
+    overflow: hidden;
+    z-index: 1;
+}
+
+/* Top toolbar */
 #toolbar {
-    grid-area: toolbar;
-    background-color: var(--panel-bg);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    width: 100%;
+    background-color: rgba(40, 40, 40, 0.85);
     display: flex;
     align-items: center;
     padding: 0 10px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    z-index: 100;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
 }
 
-#main-view {
-    grid-area: main-view;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    position: relative;
-    overflow: hidden;
+#toolbar button, #toolbar div {
+    margin: 0 5px;
 }
 
+/* Slide-out panels */
 #left-panel {
-    grid-area: left-panel;
-    display: flex;
-    flex-direction: column;
+    position: absolute;
+    top: 40px;
+    left: -300px;
+    width: 300px;
+    height: calc(100% - 40px);
+    background-color: rgba(40, 40, 40, 0.85);
+    z-index: 100;
+    transition: transform 0.3s ease;
     overflow-y: auto;
-    background-color: var(--panel-bg);
-    border-right: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
+    color: white;
+}
+
+#left-panel.visible {
+    transform: translateX(300px);
 }
 
 #right-panel {
-    grid-area: right-panel;
-    display: flex;
-    flex-direction: column;
+    position: absolute;
+    top: 40px;
+    right: -350px;
+    width: 350px;
+    height: calc(100% - 40px);
+    background-color: rgba(40, 40, 40, 0.85);
+    z-index: 100;
+    transition: transform 0.3s ease;
     overflow-y: auto;
-    background-color: var(--panel-bg);
-    border-left: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
+    color: white;
+}
+
+#right-panel.visible {
+    transform: translateX(-350px);
 }
 
 #chat-area {
-    grid-area: chat-area;
+    position: absolute;
+    bottom: -200px;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background-color: rgba(40, 40, 40, 0.85);
+    z-index: 100;
+    transition: transform 0.3s ease;
     display: flex;
-    background-color: var(--panel-bg);
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
     padding: 10px;
+    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(5px);
+    color: white;
 }
 
-/* Panel toggle buttons */
-.panel-toggle {
-    position: absolute;
-    width: 16px;
-    height: 40px;
-    background-color: rgba(0, 0, 0, 0.2);
+#chat-area.visible {
+    transform: translateY(-200px);
+}
+
+/* Menu buttons in toolbar */
+.menu-button {
+    background-color: var(--primary-color);
     color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin: 0 5px;
+}
+
+.menu-button:hover {
+    background-color: var(--secondary-color);
+}
+
+/* HUD buttons - always visible on screen corners */
+.hud-button {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background-color: rgba(40, 40, 40, 0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    z-index: 10;
-    font-size: 12px;
+    font-size: 1.2rem;
+    z-index: 50;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
 }
 
-#left-panel-toggle {
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    border-radius: 0 4px 4px 0;
+#left-panel-button {
+    top: 50px;
+    left: 10px;
 }
 
-#right-panel-toggle {
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    border-radius: 4px 0 0 4px;
+#right-panel-button {
+    top: 50px;
+    right: 10px;
 }
 
-.collapsed {
-    width: 0 !important;
-    min-width: 0 !important;
-    padding: 0 !important;
-    overflow: hidden;
-    margin: 0;
-    border: none !important;
+#chat-panel-button {
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 /* Panel styling */

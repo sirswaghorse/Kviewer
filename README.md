@@ -1,6 +1,6 @@
-# KitelyView
+# KViewer
 
-A cross-platform OpenSimulator viewer designed for intuitive and engaging virtual world exploration, focusing on user experience and grid interaction, particularly for the Kitely grid.
+A viewer designed for intuitive and engaging virtual world exploration, focusing on user experience and grid interaction, particularly for the Kitely grid.
 
 ## Features
 
